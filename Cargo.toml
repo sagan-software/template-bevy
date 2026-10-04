@@ -1,0 +1,242 @@
+[package]
+name = "template-bevy"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Nix-first Bevy game template"
+publish = false
+autobenches = false
+
+[dependencies]
+avian2d.workspace = true
+bevy.workspace = true
+bevy_brp_extras.workspace = true
+bevy_hanabi.workspace = true
+bevy-inspector-egui.workspace = true
+bevy_enhanced_input.workspace = true
+clap.workspace = true
+lightyear.workspace = true
+log.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+toml.workspace = true
+
+[dev-dependencies]
+criterion.workspace = true
+tempfile.workspace = true
+
+[features]
+default = []
+dev = ["bevy/dev"]
+dynamic_linking = ["bevy/dynamic_linking"]
+trace_chrome = ["bevy/trace_chrome"]
+trace_tracy = ["bevy/trace_tracy"]
+
+[lib]
+bench = false
+
+[[bench]]
+name = "simulation"
+harness = false
+
+[lints]
+workspace = true
+
+[workspace]
+resolver = "3"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+keywords = []
+rust-version = "1.96.1"
+
+[workspace.dependencies]
+avian2d = { version = "0.7.0", default-features = false, features = [
+  "2d",
+  "f32",
+  "parry-f32",
+  "parallel",
+  "serialize",
+] }
+bevy = { version = "0.19.1", default-features = false, features = [
+  "2d",
+  "bevy_remote",
+  "serialize",
+  "sysinfo_plugin",
+] }
+bevy_brp_extras = "0.22.5"
+bevy_hanabi = { version = "0.19.0", default-features = false, features = [
+  "2d",
+] }
+bevy-inspector-egui = { version = "0.37.0", default-features = false, features = [
+  "2d",
+] }
+bevy_enhanced_input = { version = "0.26.0", default-features = false, features = [
+  "serialize",
+] }
+clap = { version = "4.6.6", features = ["derive"] }
+criterion = { version = "0.8.2", features = ["html_reports"] }
+lightyear = { version = "0.29.0", default-features = false, features = [
+  "std",
+  "client",
+  "server",
+  "replication",
+  "prediction",
+  "interpolation",
+  "frame_interpolation",
+  "avian2d",
+  "input_bei",
+  "crossbeam",
+  "raw_connection",
+] }
+log = { version = "0.4.34", features = [
+  "max_level_debug",
+  "release_max_level_warn",
+] }
+serde = { version = "1.0.229", features = ["derive"] }
+tempfile = "3.27.0"
+thiserror = "2.0.20"
+toml = "1.1.5"
+
+[profile.dev]
+opt-level = 1
+debug = 1
+
+[profile.dev.package."*"]
+opt-level = 3
+
+[profile.release]
+codegen-units = 1
+lto = "thin"
+strip = "debuginfo"
+
+[profile.wasm-release]
+inherits = "release"
+opt-level = "s"
+strip = "debuginfo"
+
+# https://doc.rust-lang.org/rustc/lints/listing/index.html
+[workspace.lints.rust]
+absolute-paths-not-starting-with-crate = "warn"
+ambiguous-negative-literals = "warn"
+closure-returning-async-block = "warn"
+deprecated-safe-2024 = "warn"
+deref-into-dyn-supertrait = "warn"
+edition-2024-expr-fragment-specifier = "warn"
+elided-lifetimes-in-paths = "warn"
+explicit-outlives-requirements = "warn"
+ffi-unwind-calls = "warn"
+if-let-rescope = "warn"
+impl-trait-overcaptures = "warn"
+impl-trait-redundant-captures = "warn"
+keyword-idents-2018 = "warn"
+keyword-idents-2024 = "warn"
+let-underscore-drop = "warn"
+# NOTE: Set to "allow" because this lint produces noisy warnings on macOS
+# ("ignoring duplicate libraries", "built for newer macOS version", etc.)
+# that are harmless. The Rust team is working on splitting this lint into
+# linker-info (allow) and linker-messages (warn). See:
+# https://github.com/rust-lang/rust/issues/136096
+linker-messages = "allow"
+macro-use-extern-crate = "warn"
+meta-variable-misuse = "warn"
+missing-copy-implementations = "warn"
+missing-debug-implementations = "warn"
+missing-docs = { level = "forbid", priority = 1 }
+missing-unsafe-on-extern = "warn"
+# multiple-supertrait-upcastable = "warn"
+# must-not-suspend = "warn"
+non-ascii-idents = "warn"
+# non-exhaustive-omitted-patterns = "warn"
+redundant-imports = "warn"
+redundant-lifetimes = "warn"
+rust-2021-incompatible-closure-captures = "warn"
+rust-2021-incompatible-or-patterns = "warn"
+rust-2021-prefixes-incompatible-syntax = "warn"
+rust-2021-prelude-collisions = "warn"
+rust-2024-guarded-string-incompatible-syntax = "warn"
+rust-2024-incompatible-pat = "warn"
+rust-2024-prelude-collisions = "warn"
+single-use-lifetimes = "warn"
+# supertrait-item-shadowing-definition = "warn"
+# supertrait-item-shadowing-usage = "warn"
+tail-expr-drop-order = "warn"
+trivial-casts = "warn"
+trivial-numeric-casts = "warn"
+unit-bindings = "warn"
+unknown-lints = "deny"
+unexpected_cfgs = { level = "warn", check-cfg = ["cfg(coverage)"] }
+unnameable-types = "warn"
+# unqualified-local-imports = "warn"
+unreachable-pub = { level = "warn", priority = 1 }
+unsafe-attr-outside-unsafe = "warn"
+unsafe-code = "deny"
+unsafe-op-in-unsafe-fn = "warn"
+unstable-features = "warn"
+unused-crate-dependencies = "allow"
+unused-extern-crates = "warn"
+unused-import-braces = "warn"
+unused-lifetimes = "warn"
+unused-macro-rules = "warn"
+unused-qualifications = "warn"
+unused-results = "allow"
+variant-size-differences = "warn"
+
+# https://doc.rust-lang.org/rustdoc/lints.html
+[workspace.lints.rustdoc]
+bare_urls = "warn"
+broken_intra_doc_links = "warn"
+invalid_codeblock_attributes = "warn"
+invalid_html_tags = "warn"
+invalid_rust_codeblocks = "warn"
+private_intra_doc_links = "warn"
+redundant_explicit_links = "warn"
+unescaped_backticks = "warn"
+
+# https://rust-lang.github.io/rust-clippy/master/index.html
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+allow_attributes = { level = "warn", priority = 2 }
+allow_attributes_without_reason = { level = "warn", priority = 2 }
+indexing_slicing = { level = "warn", priority = 2 }
+cargo = { level = "warn", priority = -1 }
+# Allow multiple versions of transitive dependencies (out of our control)
+multiple_crate_versions = { level = "allow", priority = 1 }
+complexity = { level = "warn", priority = -1 }
+correctness = { level = "warn", priority = -1 }
+needless_pass_by_value = "allow"
+nursery = { level = "warn", priority = -1 }
+# Noisy nursery lints - allow until they are more stable
+missing_const_for_fn = { level = "warn", priority = 1 }
+# future_not_send conflicts with valid async patterns using references
+future_not_send = { level = "allow", priority = 1 }
+# significant_drop_tightening has false positives and is overly pedantic
+significant_drop_tightening = { level = "allow", priority = 1 }
+pedantic = { level = "warn", priority = -1 }
+perf = { level = "warn", priority = -1 }
+redundant_pub_crate = { level = "allow", priority = 1 }
+restriction = { level = "allow", priority = -1 }
+style = { level = "warn", priority = -1 }
+suspicious = { level = "warn", priority = -1 }
+too_many_arguments = "allow"
+type_complexity = "allow"
+cargo_common_metadata = { level = "allow", priority = 1 }
+option_if_let_else = "warn"
+doc_markdown = "warn"
+missing_errors_doc = "warn"
+missing_docs_in_private_items = { level = "forbid", priority = 2 }
+missing_panics_doc = "warn"
+cast_precision_loss = { level = "warn", priority = 1 }
+struct_field_names = { level = "warn", priority = 1 }
+must_use_candidate = "warn"
+if_not_else = { level = "warn", priority = 1 }
+collapsible_if = { level = "warn", priority = 1 }
+match_same_arms = { level = "warn", priority = 1 }
+redundant_closure_for_method_calls = { level = "warn", priority = 1 }
+let_and_return = { level = "warn", priority = 1 }
+struct_excessive_bools = { level = "warn", priority = 1 }
+missing_fields_in_debug = { level = "warn", priority = 1 }
+use_self = { level = "warn", priority = 1 }
+unused_self = { level = "warn", priority = 1 }
+unnecessary_wraps = { level = "warn", priority = 1 }

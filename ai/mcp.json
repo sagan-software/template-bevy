@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "bevy-brp": {
+      "type": "stdio",
+      "command": "bevy_brp_mcp",
+      "args": [],
+      "env": {
+        "RUST_LOG": "info"
+      }
+    }
+  }
+}

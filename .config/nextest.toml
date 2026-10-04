@@ -1,0 +1,6 @@
+# Nextest configuration
+# https://nexte.st/docs/configuration/
+
+[profile.default]
+# Default test threads
+test-threads = "num-cpus"

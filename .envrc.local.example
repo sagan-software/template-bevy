@@ -1,0 +1,5 @@
+# Copy to .envrc.local and customize for local-only environment variables.
+# This file is loaded by .envrc when present.
+
+# Example:
+# export RUST_LOG=info

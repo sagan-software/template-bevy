@@ -1,0 +1,6 @@
+[mcp_servers.bevy-brp]
+command = "bevy_brp_mcp"
+args = []
+
+[mcp_servers.bevy-brp.env]
+RUST_LOG = "info"
