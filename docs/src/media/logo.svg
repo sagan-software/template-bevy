@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="208" height="112" viewBox="0 0 208 112" role="img" aria-labelledby="title">
+  <title id="title">Bevy game template: a circle and a cube</title>
+  <circle cx="51" cy="56" r="31" fill="#3dd6ff"/>
+  <path d="M149 20 184 40 184 80 149 100 114 80 114 40Z" fill="#ff9d46"/>
+  <path d="m114 40 35 20 35-20M149 60v40" fill="none" stroke="#754317" stroke-width="3"/>
+</svg>

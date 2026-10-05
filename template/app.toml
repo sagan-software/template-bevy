@@ -1,0 +1,30 @@
+[package]
+name = "{{project-name}}"
+description = "Bevy game starter"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[features]
+default = [{% if dimension == "2d" or dimension == "both" %}"dim2",{% endif %}{% if dimension == "3d" or dimension == "both" %}"dim3",{% endif %}{% if networked %}"networked",{% endif %}{% if skein %}"skein",{% endif %}{% if mcp %}"mcp",{% endif %}{% if web %}"web",{% endif %}]
+dim2 = ["game/dim2"]
+dim3 = ["game/dim3"]
+networked = ["game/networked"]
+mcp = ["game/mcp", "game-assets?/mcp"]
+skein = ["dep:game-assets", "bevy/bevy_gltf"]
+web = ["game/web"]
+dev = ["game/dev"]
+dynamic_linking = ["game/dynamic_linking"]
+trace_chrome = ["game/trace_chrome"]
+trace_tracy = ["game/trace_tracy"]
+
+[dependencies]
+game.workspace = true
+game-settings.workspace = true
+game-assets = { workspace = true, optional = true }
+bevy.workspace = true
+clap.workspace = true
+
+[lints]
+workspace = true

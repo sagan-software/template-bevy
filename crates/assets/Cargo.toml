@@ -1,0 +1,18 @@
+[package]
+workspace = "../.."
+name = "game-assets"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[features]
+default = []
+mcp = ["bevy_skein/brp", "bevy/bevy_remote"]
+
+[dependencies]
+bevy = { workspace = true, features = ["bevy_gltf", "bevy_scene", "bevy_mesh"] }
+bevy_skein.workspace = true
+
+[lints]
+workspace = true

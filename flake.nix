@@ -1,5 +1,5 @@
 {
-  description = "Bevy game template with Nix-first workflows";
+  description = "Bevy game template with optional reproducible tooling";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -23,6 +23,16 @@
         rust-overlay.follows = "rust-overlay";
       };
     };
+    dylints = {
+      url = "github:sagan-software/dylints/9bc21efeccdd1236e3e64cf7bb607823c60d4600";
+      inputs = {
+        nixpkgs.follows = "nixpkgs";
+        flake-utils.follows = "flake-utils";
+        rust-overlay.follows = "rust-overlay";
+        crane.follows = "crane";
+        treefmt-nix.follows = "treefmt-nix";
+      };
+    };
   };
 
   outputs =
@@ -33,6 +43,7 @@
       crane,
       rust-overlay,
       bevy_cli,
+      dylints,
       ...
     }:
     flake-utils.lib.eachDefaultSystem (
@@ -42,555 +53,305 @@
           inherit system;
           overlays = [ (import rust-overlay) ];
         };
-
-        bevyLintToolchain = pkgs.rust-bin.fromRustupToolchainFile "${bevy_cli}/rust-toolchain.toml";
-        bevyCli = bevy_cli.packages.${system}.default.overrideAttrs (oldAttrs: {
-          buildInputs =
-            (oldAttrs.buildInputs or [ ]) ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [ pkgs.zlib ];
-          postInstall = (oldAttrs.postInstall or "") + ''
-            wrapProgram "$out/bin/bevy_lint" \
-              --prefix PATH : "${pkgs.lib.makeBinPath [ bevyLintToolchain ]}"
-          '';
-        });
-        rustToolchain = pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
-        craneLib = (crane.mkLib pkgs).overrideToolchain rustToolchain;
-
-        src = craneLib.cleanCargoSource ./.;
-        packageName = "template-bevy";
-        coverageThreshold = 50;
-        coverageIgnoreRegex = "(^|/)(tests|benches)/";
-        supportedFeatures = [
-          "dev"
-          "dynamic_linking"
-          "trace_chrome"
-          "trace_tracy"
-        ];
-        supportedFeatureCheckCommands = pkgs.lib.concatMapStringsSep "\n" (
-          feature: "cargo check --workspace --locked --no-default-features --features '${feature}'"
-        ) supportedFeatures;
-
-        bevyNativeBuildInputs = [
-          pkgs.cmake
-          pkgs.clang
-          pkgs.lld
-          pkgs.makeWrapper
-          pkgs.pkg-config
-        ];
-
-        bevyBuildInputs = pkgs.lib.optionals pkgs.stdenv.isLinux [
-          pkgs.alsa-lib
-          pkgs.libxkbcommon
-          pkgs.udev
-          pkgs.vulkan-loader
-          pkgs.wayland
-          pkgs.libx11
-          pkgs.libxcursor
-          pkgs.libxi
-          pkgs.libxrandr
-        ];
-
-        runtimeLibraryPath = pkgs.lib.makeLibraryPath bevyBuildInputs;
-        pkgConfigPath = pkgs.lib.makeSearchPathOutput "dev" "lib/pkgconfig" bevyBuildInputs;
-
-        bevyBrpMcp =
-          let
-            pname = "bevy_brp_mcp";
-            version = "0.20.1";
-          in
-          pkgs.rustPlatform.buildRustPackage {
-            inherit pname version;
-
-            src = pkgs.fetchCrate {
-              inherit pname version;
-              hash = "sha256-pFE8vKDwuc9e8viKlidPRnvdC5JlF90/vgApzvJXLyQ=";
-            };
-
-            cargoHash = "sha256-rDjhWN1Sc+D0Oi5rZuL80Ifa1BU8dvJlAFYjfINYPDo=";
-            doCheck = false;
-
-            nativeBuildInputs = [ pkgs.pkg-config ];
-            buildInputs = pkgs.lib.optionals pkgs.stdenv.isLinux [ pkgs.openssl ];
-
-            meta.mainProgram = "bevy_brp_mcp";
-          };
-
-        aiSupport = pkgs.callPackage ./ai/default.nix {
-          inherit bevyBrpMcp packageName;
+        inherit (pkgs) lib;
+        rust = pkgs.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
+        craneLib = (crane.mkLib pkgs).overrideToolchain rust;
+        appManifest = builtins.fromTOML (builtins.readFile ./crates/app/Cargo.toml);
+        appName = appManifest.package.name;
+        mcpEnabled = builtins.elem "mcp" (appManifest.features.default or [ ]);
+        src = lib.cleanSourceWith {
+          src = ./.;
+          filter =
+            path: type:
+            lib.cleanSourceFilter path type
+            && !(
+              type == "directory"
+              && builtins.elem (baseNameOf path) [
+                "target"
+                ".direnv"
+                "book"
+                "result"
+                "template"
+              ]
+            );
         };
-
-        commonArgs = {
+        native = with pkgs; [
+          cmake
+          clang
+          lld
+          makeWrapper
+          pkg-config
+        ];
+        libraries = lib.optionals pkgs.stdenv.hostPlatform.isLinux (
+          with pkgs;
+          [
+            alsa-lib
+            libxkbcommon
+            udev
+            vulkan-loader
+            wayland
+            libx11
+            libxcursor
+            libxi
+            libxrandr
+          ]
+        );
+        environment = ''
+          export PKG_CONFIG_PATH="${
+            lib.makeSearchPathOutput "dev" "lib/pkgconfig" libraries
+          }:''${PKG_CONFIG_PATH:-}"
+          export LD_LIBRARY_PATH="${lib.makeLibraryPath libraries}:''${LD_LIBRARY_PATH:-}"
+        '';
+        common = {
           inherit src;
           strictDeps = true;
-          nativeBuildInputs = bevyNativeBuildInputs;
-          buildInputs = bevyBuildInputs;
+          nativeBuildInputs = native;
+          buildInputs = libraries;
+          pname = appName;
+          version = "0.1.0";
         };
-
-        cargoArtifacts = craneLib.buildDepsOnly commonArgs;
-
-        templateBevy = craneLib.buildPackage (
-          commonArgs
+        artifacts = craneLib.buildDepsOnly common;
+        package = craneLib.buildPackage (
+          common
           // {
-            inherit cargoArtifacts;
-            pname = packageName;
-            version = "0.1.0";
+            cargoArtifacts = artifacts;
+            cargoExtraArgs = "--locked -p ${appName}";
             doCheck = false;
-            postFixup = pkgs.lib.optionalString pkgs.stdenv.isLinux ''
-              wrapProgram "$out/bin/${packageName}" \
-                --prefix LD_LIBRARY_PATH : "${runtimeLibraryPath}"
+            postFixup = lib.optionalString pkgs.stdenv.hostPlatform.isLinux ''
+              wrapProgram "$out/bin/${appName}" --prefix LD_LIBRARY_PATH : "${lib.makeLibraryPath libraries}"
             '';
           }
         );
-
-        ensureAgentLink = aiSupport.ensureLinks;
-
-        withAgentLink =
-          text:
-          ''
-            set -euo pipefail
-            ensure-ai-links
-          ''
-          + text;
-
-        # dprint accepts local WASM paths: https://dprint.dev/config/#plugins.
-        # Fetch pinned plugins before the network-disabled formatting check.
-        dprintSettings = builtins.fromJSON (builtins.readFile ./dprint.json);
-        dprintPluginHashes = builtins.fromJSON (builtins.readFile ./nix/dprint-plugin-hashes.json);
-        dprintOfflineConfig = pkgs.writeText "dprint-offline.json" (
-          builtins.toJSON (
-            dprintSettings
-            // {
-              plugins = map (
-                url:
-                toString (
-                  pkgs.fetchurl {
-                    inherit url;
-                    sha256 = dprintPluginHashes.${url};
-                  }
-                )
-              ) dprintSettings.plugins;
-            }
-          )
+        treefmt = treefmt-nix.lib.evalModule pkgs {
+          projectRootFile = "flake.nix";
+          programs.nixfmt.enable = true;
+          programs.rustfmt.enable = true;
+          settings.global.excludes = [
+            ".direnv/**"
+            ".git/**"
+            "target/**"
+            "docs/book/**"
+            "result*/**"
+          ];
+        };
+        lintCrane = (crane.mkLib pkgs).overrideToolchain lintToolchain;
+        supported = builtins.hasAttr system dylints.packages;
+        lintToolchain = pkgs.rust-bin.fromRustupToolchainFile "${dylints}/rust-toolchain.toml";
+        lintBundle = dylints.packages.${system}.sagan-lints or null;
+        lintMetadata =
+          (builtins.fromTOML (builtins.readFile ./Cargo.toml)).workspace.metadata.dylint.libraries;
+        lintGroups = lib.concatMap (
+          entry:
+          assert entry.git == "https://github.com/sagan-software/dylints" && entry.rev == dylints.rev;
+          map builtins.baseNameOf entry.pattern
+        ) lintMetadata;
+        lintArgs = lib.concatMapStringsSep " " (
+          group: "--dylint-category ${lib.escapeShellArg group}"
+        ) lintGroups;
+        command =
+          name: inputs: text:
+          pkgs.writeShellApplication {
+            inherit name;
+            runtimeInputs = [ rust ] ++ native ++ libraries ++ inputs;
+            text = environment + text;
+          };
+        dylint = command "run-dylints" (lib.optionals supported [ lintBundle ]) (
+          if supported then
+            ''sagan-lints --repo . --skip-clippy --workspace --all-targets --locked ${lintArgs} "$@"''
+          else
+            ''echo "The pinned Dylints bundle does not support ${system}." >&2; exit 2''
         );
-
-        treefmtEval = treefmt-nix.lib.evalModule pkgs {
-          projectRootFile = "flake.nix";
-          programs = {
-            dprint.enable = true;
-            nixfmt.enable = true;
-            rustfmt.enable = true;
+        bevyToolchain = pkgs.rust-bin.fromRustupToolchainFile "${bevy_cli}/rust-toolchain.toml";
+        bevyCli = bevy_cli.packages.${system}.default.overrideAttrs (old: {
+          buildInputs =
+            (old.buildInputs or [ ]) ++ lib.optionals pkgs.stdenv.hostPlatform.isDarwin [ pkgs.zlib ];
+          postInstall =
+            (old.postInstall or "")
+            + ''wrapProgram "$out/bin/bevy_lint" --prefix PATH : "${lib.makeBinPath [ bevyToolchain ]}"'';
+        });
+        mcp = pkgs.rustPlatform.buildRustPackage {
+          pname = "bevy_brp_mcp";
+          version = "0.22.8";
+          src = pkgs.fetchCrate {
+            pname = "bevy_brp_mcp";
+            version = "0.22.8";
+            hash = "sha256-X9We8y+VVfQB3HgDLMvZF+0Ismpf8qpvyGRfjpwt1uk=";
           };
-          settings.global.excludes = [
-            ".direnv/**"
-            ".git/**"
-            "target/**"
-            "result*/**"
-          ];
-          settings.formatter.dprint.options = [
-            "--allow-no-files"
-            "--config"
-            (toString dprintOfflineConfig)
-          ];
+          cargoHash = "sha256-M2xccmCc3eypqzTFQMAqRXpgk3NYYtQEN1ay+jeY020=";
+          nativeBuildInputs = [ pkgs.pkg-config ];
+          buildInputs = lib.optionals pkgs.stdenv.hostPlatform.isLinux [ pkgs.openssl ];
+          doCheck = false;
+          meta.mainProgram = "bevy_brp_mcp";
         };
-
-        treefmtCheckEval = treefmt-nix.lib.evalModule pkgs {
-          projectRootFile = "flake.nix";
-          programs = {
-            dprint.enable = true;
-            nixfmt.enable = true;
-            rustfmt.enable = true;
-          };
-          settings.global.excludes = [
-            ".direnv/**"
-            ".git/**"
-            "target/**"
-            "result*/**"
-          ];
-          settings.formatter.dprint.options = [
-            "--allow-no-files"
-            "--config"
-            (toString dprintOfflineConfig)
-          ];
-        };
-
-        formatRepo = pkgs.writeShellApplication {
-          name = "format-repo";
-          runtimeInputs = [
-            ensureAgentLink
-            treefmtEval.config.build.wrapper
-          ];
-          text = withAgentLink ''
-            treefmt
+        # Trunk's bundled libdeflate requires Clang with this nixpkgs compiler set.
+        trunk = pkgs.trunk.overrideAttrs (old: {
+          nativeBuildInputs = (old.nativeBuildInputs or [ ]) ++ [ pkgs.clang ];
+          preBuild = (old.preBuild or "") + ''
+            export CC_${
+              lib.replaceStrings [ "-" ] [ "_" ] pkgs.stdenv.hostPlatform.rust.rustcTarget
+            }="${pkgs.clang}/bin/clang"
           '';
+        });
+        tools =
+          with pkgs;
+          [
+            cargo-generate
+            cargo-llvm-cov
+            cargo-nextest
+            mdbook
+            binaryen
+            cargo-flamegraph
+            samply
+            hyperfine
+          ]
+          ++ [ trunk ]
+          ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [ perf ];
+        workflow = action: command "project-${action}" tools ''cargo xtask ${action} "$@"'';
+        commands = {
+          default = command "run-game" [ ] ''cargo run --locked -p ${lib.escapeShellArg appName} -- "$@"'';
+          dev =
+            command "run-dev" [ ]
+              ''cargo run --locked -p ${lib.escapeShellArg appName} --features dev -- "$@"'';
+          editor =
+            command "run-editor" [ ]
+              ''cargo run --locked -p ${lib.escapeShellArg appName} --features mcp -- --editor "$@"'';
+          test = command "run-tests" [ ] ''cargo test --locked "$@"'';
+          clippy = command "run-clippy" [ ] ''cargo clippy --all-targets --all-features -- -D warnings "$@"'';
+          bench = command "run-benchmarks" [ ] ''cargo bench --workspace --locked -- "$@"'';
+          fmt = command "format-project" [ treefmt.config.build.wrapper ] ''treefmt "$@"'';
+          setup-ai = workflow "setup";
+          book = workflow "book";
+          coverage = workflow "coverage";
+          features = workflow "features";
+          generate-matrix = workflow "generate-matrix";
+          bevy = command "run-bevy-cli" [ bevyCli ] ''bevy "$@"'';
+          inherit dylint;
+          check =
+            command "check-project"
+              (
+                tools
+                ++ [
+                  dylint
+                  treefmt.config.build.wrapper
+                ]
+              )
+              ''
+                treefmt --fail-on-change
+                cargo xtask check
+                run-dylints
+              '';
         };
-
-        formatCheck =
-          pkgs.runCommand "format-check"
+        gate =
+          name: extra: script:
+          craneLib.mkCargoDerivation (
+            common
+            // {
+              cargoArtifacts = artifacts;
+              pname = "${appName}-${name}";
+              nativeBuildInputs = native ++ extra;
+              buildPhaseCargoCommand = script;
+              doInstallCargoArtifacts = false;
+              installPhaseCommand = "mkdir -p $out";
+            }
+          );
+        onboarding =
+          pkgs.runCommand "dylint-onboarding"
             {
-              nativeBuildInputs = [ treefmtCheckEval.config.build.wrapper ];
+              nativeBuildInputs = [
+                dylint
+                lintToolchain
+              ];
             }
             ''
-              cp -r ${./.} ./repo
-              chmod -R +w ./repo
-              cd ./repo
-
-              export HOME="$TMPDIR"
-              export XDG_CACHE_HOME="$TMPDIR/.cache"
-              treefmt --fail-on-change
-
+              export CARGO_HOME="$TMPDIR/cargo" CARGO_NET_OFFLINE=true SAGAN_LINTS_CACHE_DIR="$TMPDIR/cache"
+              mkdir -p repo/src
+              cd repo
+              cat > Cargo.toml <<'TOML'
+              [package]
+              name = "lint-onboarding"
+              version = "0.1.0"
+              edition = "2024"
+              TOML
+              echo 'pub fn count(values: Vec<u8>) -> usize { values.len() }' > src/lib.rs
+              cargo generate-lockfile --offline
+              status=0
+              run-dylints > failing.log 2>&1 || status=$?
+              cat failing.log
+              test "$status" -eq 1
+              grep -q ownership_at_boundaries failing.log
+              echo 'pub fn count(values: &[u8]) -> usize { values.len() }' > src/lib.rs
+              run-dylints
               touch "$out"
             '';
-
-        clippyCheck = craneLib.cargoClippy (
-          commonArgs
-          // {
-            inherit cargoArtifacts;
-            cargoClippyExtraArgs = "--workspace --all-targets -- --deny warnings";
-          }
-        );
-
-        testCheck = craneLib.cargoNextest (
-          commonArgs
-          // {
-            inherit cargoArtifacts;
-            partitions = 1;
-            partitionType = "count";
-            cargoNextestExtraArgs = "--workspace --no-tests=pass";
-          }
-        );
-
-        doctestCheck = craneLib.mkCargoDerivation (
-          commonArgs
-          // {
-            inherit cargoArtifacts;
-            pname = "${packageName}-doctest";
-            version = "0.1.0";
-            buildPhaseCargoCommand = "cargo test --workspace --doc --locked";
-            doInstallCargoArtifacts = false;
-            installPhaseCommand = "mkdir -p $out";
-          }
-        );
-
-        privateDocsCheck = craneLib.mkCargoDerivation (
-          commonArgs
-          // {
-            inherit cargoArtifacts;
-            pname = "${packageName}-private-docs";
-            version = "0.1.0";
-            RUSTDOCFLAGS = "-D warnings";
-            buildPhaseCargoCommand = "cargo doc --workspace --no-deps --document-private-items --locked";
-            doInstallCargoArtifacts = false;
-            installPhaseCommand = "mkdir -p $out";
-          }
-        );
-
-        benchmarkCheck = craneLib.mkCargoDerivation (
-          commonArgs
-          // {
-            inherit cargoArtifacts;
-            pname = "${packageName}-bench-check";
-            version = "0.1.0";
-            buildPhaseCargoCommand = "cargo bench --workspace --locked --no-run";
-            doInstallCargoArtifacts = false;
-            installPhaseCommand = "mkdir -p $out";
-          }
-        );
-
-        featureMatrixCheck = craneLib.mkCargoDerivation (
-          commonArgs
-          // {
-            inherit cargoArtifacts;
-            pname = "${packageName}-feature-matrix-check";
-            version = "0.1.0";
-            buildPhaseCargoCommand = supportedFeatureCheckCommands;
-            doInstallCargoArtifacts = false;
-            installPhaseCommand = "mkdir -p $out";
-          }
-        );
-
-        coverageReport = craneLib.mkCargoDerivation (
-          commonArgs
-          // {
-            inherit cargoArtifacts;
-            pname = "${packageName}-coverage";
-            version = "0.1.0";
-            nativeBuildInputs = commonArgs.nativeBuildInputs ++ [ pkgs.cargo-llvm-cov ];
-            buildPhaseCargoCommand = ''
-              mkdir -p "$out"
-              cargo llvm-cov clean --workspace
-              cargo llvm-cov --workspace --locked --remap-path-prefix --no-report
-              cargo llvm-cov report --html --output-dir "$out" \
-                --ignore-filename-regex '${coverageIgnoreRegex}' \
-                --remap-path-prefix
-              cargo llvm-cov report --lcov --output-path "$out/lcov.info" \
-                --ignore-filename-regex '${coverageIgnoreRegex}' \
-                --remap-path-prefix
-              cargo llvm-cov report --json --output-path "$out/coverage.json" \
-                --ignore-filename-regex '${coverageIgnoreRegex}' \
-                --skip-functions \
-                --remap-path-prefix
-              cargo llvm-cov report \
-                --fail-under-lines ${toString coverageThreshold} \
-                --ignore-filename-regex '${coverageIgnoreRegex}' \
-                --show-missing-lines \
-                --remap-path-prefix
-              test -s "$out/html/index.html"
-              test -s "$out/lcov.info"
-              test -s "$out/coverage.json"
-            '';
-            doInstallCargoArtifacts = false;
-            installPhaseCommand = "true";
-          }
-        );
-
-        bevyLintCheck = craneLib.mkCargoDerivation (
-          commonArgs
-          // {
-            cargoArtifacts = null;
-            pname = "${packageName}-bevy-lint";
-            version = "0.1.0";
-            nativeBuildInputs = commonArgs.nativeBuildInputs ++ [ bevyCli ];
-            buildPhaseCargoCommand = ''
-              CARGO_TARGET_DIR=target/bevy-lint bevy_lint --workspace --all-targets --locked
-            '';
-            doInstallCargoArtifacts = false;
-            installPhaseCommand = "mkdir -p $out";
-          }
-        );
-
-        runCoverage = pkgs.writeShellApplication {
-          name = "run-coverage";
-          runtimeInputs = [
-            ensureAgentLink
-            pkgs.cargo-llvm-cov
-            rustToolchain
-          ]
-          ++ bevyNativeBuildInputs
-          ++ bevyBuildInputs;
-          text = withAgentLink ''
-            export PKG_CONFIG_PATH="${pkgConfigPath}:''${PKG_CONFIG_PATH:-}"
-            export LD_LIBRARY_PATH="${runtimeLibraryPath}:''${LD_LIBRARY_PATH:-}"
-
-            report_dir="target/llvm-cov"
-            mkdir -p "$report_dir"
-
-            cargo llvm-cov clean --workspace
-            cargo llvm-cov --workspace --locked --remap-path-prefix --no-report
-            cargo llvm-cov report --html --output-dir "$report_dir" \
-              --ignore-filename-regex '${coverageIgnoreRegex}' \
-              --remap-path-prefix
-            cargo llvm-cov report --lcov --output-path "$report_dir/lcov.info" \
-              --ignore-filename-regex '${coverageIgnoreRegex}' \
-              --remap-path-prefix
-            cargo llvm-cov report --json --output-path "$report_dir/coverage.json" \
-              --ignore-filename-regex '${coverageIgnoreRegex}' \
-              --skip-functions \
-              --remap-path-prefix
-            cargo llvm-cov report \
-              --fail-under-lines ${toString coverageThreshold} \
-              --ignore-filename-regex '${coverageIgnoreRegex}' \
-              --show-missing-lines \
-              --remap-path-prefix
-
-            test -s "$report_dir/html/index.html"
-            test -s "$report_dir/lcov.info"
-            test -s "$report_dir/coverage.json"
-          '';
-        };
-
-        runChecks = pkgs.writeShellApplication {
-          name = "run-checks";
-          runtimeInputs = [
-            ensureAgentLink
-            treefmtEval.config.build.wrapper
-            pkgs.cargo-nextest
-            rustToolchain
-            bevyCli
-            runCoverage
-          ]
-          ++ bevyNativeBuildInputs
-          ++ bevyBuildInputs;
-          text = withAgentLink ''
-            export PKG_CONFIG_PATH="${pkgConfigPath}:''${PKG_CONFIG_PATH:-}"
-            export LD_LIBRARY_PATH="${runtimeLibraryPath}:''${LD_LIBRARY_PATH:-}"
-            treefmt --fail-on-change
-            cargo clippy --workspace --all-targets --locked -- --deny warnings
-            ${supportedFeatureCheckCommands}
-            CARGO_TARGET_DIR=target/bevy-lint bevy_lint --workspace --all-targets --locked
-            cargo nextest run --locked --workspace --no-tests=pass
-            cargo test --workspace --doc --locked
-            RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --document-private-items --locked
-            cargo bench --workspace --locked --no-run
-            run-coverage
-          '';
-        };
-
-        runClippy = pkgs.writeShellApplication {
-          name = "run-clippy";
-          runtimeInputs = [
-            ensureAgentLink
-            rustToolchain
-          ]
-          ++ bevyNativeBuildInputs
-          ++ bevyBuildInputs;
-          text = withAgentLink ''
-            export PKG_CONFIG_PATH="${pkgConfigPath}:''${PKG_CONFIG_PATH:-}"
-            export LD_LIBRARY_PATH="${runtimeLibraryPath}:''${LD_LIBRARY_PATH:-}"
-            cargo clippy --workspace --all-targets --locked -- --deny warnings
-          '';
-        };
-
-        runFeatureChecks = pkgs.writeShellApplication {
-          name = "check-supported-features";
-          runtimeInputs = [
-            ensureAgentLink
-            rustToolchain
-          ]
-          ++ bevyNativeBuildInputs
-          ++ bevyBuildInputs;
-          text = withAgentLink ''
-            export PKG_CONFIG_PATH="${pkgConfigPath}:''${PKG_CONFIG_PATH:-}"
-            export LD_LIBRARY_PATH="${runtimeLibraryPath}:''${LD_LIBRARY_PATH:-}"
-            ${supportedFeatureCheckCommands}
-          '';
-        };
-
-        runTests = pkgs.writeShellApplication {
-          name = "run-tests";
-          runtimeInputs = [
-            ensureAgentLink
-            pkgs.cargo-nextest
-            rustToolchain
-          ]
-          ++ bevyNativeBuildInputs
-          ++ bevyBuildInputs;
-          text = withAgentLink ''
-            export PKG_CONFIG_PATH="${pkgConfigPath}:''${PKG_CONFIG_PATH:-}"
-            export LD_LIBRARY_PATH="${runtimeLibraryPath}:''${LD_LIBRARY_PATH:-}"
-            cargo nextest run --locked --workspace --no-tests=pass
-            cargo test --workspace --doc --locked
-          '';
-        };
-
-        runBenchmarks = pkgs.writeShellApplication {
-          name = "run-benchmarks";
-          runtimeInputs = [
-            ensureAgentLink
-            rustToolchain
-          ]
-          ++ bevyNativeBuildInputs
-          ++ bevyBuildInputs;
-          text = withAgentLink ''
-            export PKG_CONFIG_PATH="${pkgConfigPath}:''${PKG_CONFIG_PATH:-}"
-            export LD_LIBRARY_PATH="${runtimeLibraryPath}:''${LD_LIBRARY_PATH:-}"
-            cargo bench --workspace --locked -- "$@"
-          '';
-        };
-
-        runDefault = pkgs.writeShellApplication {
-          name = "run-${packageName}";
-          runtimeInputs = [
-            ensureAgentLink
-            rustToolchain
-          ]
-          ++ bevyNativeBuildInputs
-          ++ bevyBuildInputs;
-          text = withAgentLink ''
-            export PKG_CONFIG_PATH="${pkgConfigPath}:''${PKG_CONFIG_PATH:-}"
-            export LD_LIBRARY_PATH="${runtimeLibraryPath}:''${LD_LIBRARY_PATH:-}"
-            cargo run --locked -- "$@"
-          '';
-        };
-
-        runDev = pkgs.writeShellApplication {
-          name = "run-${packageName}-dev";
-          runtimeInputs = [
-            ensureAgentLink
-            rustToolchain
-          ]
-          ++ bevyNativeBuildInputs
-          ++ bevyBuildInputs;
-          text = withAgentLink ''
-            export PKG_CONFIG_PATH="${pkgConfigPath}:''${PKG_CONFIG_PATH:-}"
-            export LD_LIBRARY_PATH="${runtimeLibraryPath}:''${LD_LIBRARY_PATH:-}"
-            cargo run --locked --features dev -- "$@"
-          '';
-        };
-
-        runEditor = pkgs.writeShellApplication {
-          name = "run-${packageName}-editor";
-          runtimeInputs = [
-            ensureAgentLink
-            rustToolchain
-          ]
-          ++ bevyNativeBuildInputs
-          ++ bevyBuildInputs;
-          text = withAgentLink ''
-            export PKG_CONFIG_PATH="${pkgConfigPath}:''${PKG_CONFIG_PATH:-}"
-            export LD_LIBRARY_PATH="${runtimeLibraryPath}:''${LD_LIBRARY_PATH:-}"
-            cargo run --locked -- --editor "$@"
-          '';
-        };
       in
       {
         packages = {
-          default = templateBevy;
-          bevy-brp-mcp = bevyBrpMcp;
-          coverage-report = coverageReport;
-          "${packageName}" = templateBevy;
+          default = package;
+          "${appName}" = package;
+          bevy-brp-mcp = mcp;
         };
-
         apps =
-          pkgs.lib.mapAttrs (name: app: app // { meta.description = "Bevy template ${name} command"; })
-            {
-              default = flake-utils.lib.mkApp { drv = runDefault; };
-              bench = flake-utils.lib.mkApp { drv = runBenchmarks; };
-              bevy-brp-mcp = flake-utils.lib.mkApp { drv = bevyBrpMcp; };
-              coverage = flake-utils.lib.mkApp { drv = runCoverage; };
-              dev = flake-utils.lib.mkApp { drv = runDev; };
-              editor = flake-utils.lib.mkApp { drv = runEditor; };
-              features = flake-utils.lib.mkApp { drv = runFeatureChecks; };
-              fmt = flake-utils.lib.mkApp { drv = formatRepo; };
-              setup-ai = flake-utils.lib.mkApp { drv = ensureAgentLink; };
-              check = flake-utils.lib.mkApp { drv = runChecks; };
-              clippy = flake-utils.lib.mkApp { drv = runClippy; };
-              test = flake-utils.lib.mkApp { drv = runTests; };
+          lib.mapAttrs (
+            name: drv:
+            (flake-utils.lib.mkApp { inherit drv; })
+            // {
+              meta.description = "Run the project's ${name} workflow";
+            }
+          ) commands
+          // {
+            bevy-brp-mcp = (flake-utils.lib.mkApp { drv = mcp; }) // {
+              meta.description = "Run the Bevy BRP MCP server";
             };
-
+          };
         checks = {
-          fmt = formatCheck;
-          clippy = clippyCheck;
-          bevy-lint = bevyLintCheck;
-          bench = benchmarkCheck;
-          coverage = coverageReport;
-          doctest = doctestCheck;
-          features = featureMatrixCheck;
-          private-docs = privateDocsCheck;
-          test = testCheck;
-          package = templateBevy;
+          inherit package;
+          fmt = treefmt.config.build.check src;
+          clippy = gate "clippy" [ ] "cargo clippy --all-targets --all-features -- -D warnings";
+          test = gate "test" [ ] "cargo test --locked";
+          doctest = gate "doctest" [ ] "cargo test --workspace --doc --locked";
+          private-docs =
+            gate "private-docs" [ ]
+              "RUSTDOCFLAGS='-D warnings' cargo doc --workspace --no-deps --document-private-items --locked";
+          bench = gate "bench" [ ] "cargo bench --workspace --locked --no-run";
+          features = gate "features" [ ] "cargo xtask features";
+          book = gate "book" [ pkgs.mdbook ] "mdbook build docs";
+          coverage = gate "coverage" [
+            pkgs.cargo-llvm-cov
+          ] ''cargo xtask coverage; cp -r target/llvm-cov "$out"'';
+        }
+        // lib.optionalAttrs supported {
+          dylint-onboarding = onboarding;
+          dylint = lintCrane.mkCargoDerivation (
+            common
+            // {
+              cargoArtifacts = lintCrane.buildDepsOnly common;
+              nativeBuildInputs = native ++ [ lintBundle ];
+              buildPhaseCargoCommand = ''
+                # Keep the lint cache outside the source tree in writable sandbox storage.
+                export SAGAN_LINTS_CACHE_DIR="$TMPDIR/sagan-lints"
+                mkdir -p "$SAGAN_LINTS_CACHE_DIR"
+                sagan-lints --repo . --skip-clippy --workspace --all-targets --locked ${lintArgs}
+              '';
+              doInstallCargoArtifacts = false;
+              installPhaseCommand = "mkdir -p $out";
+            }
+          );
         };
-
-        formatter = formatRepo;
-
+        formatter = treefmt.config.build.wrapper;
+        devShells.core = pkgs.mkShell {
+          packages = [ rust ] ++ native ++ libraries;
+          shellHook = environment;
+        };
         devShells.default = pkgs.mkShell {
           packages = [
-            bevyBrpMcp
-            bevyCli
-            pkgs.cmake
-            pkgs.clang
-            pkgs.cargo-llvm-cov
-            pkgs.cargo-nextest
-            ensureAgentLink
-            pkgs.lld
-            pkgs.pkg-config
-            treefmtEval.config.build.wrapper
-            rustToolchain
+            rust
           ]
-          ++ bevyBuildInputs;
-          shellHook = ''
-            ${aiSupport.shellHook}
-            export PKG_CONFIG_PATH="${pkgConfigPath}:''${PKG_CONFIG_PATH:-}"
-            export LD_LIBRARY_PATH="${runtimeLibraryPath}:''${LD_LIBRARY_PATH:-}"
-          '';
+          ++ native
+          ++ libraries
+          ++ tools
+          ++ lib.optionals mcpEnabled [ mcp ]
+          ++ [ dylint ];
+          shellHook = environment;
         };
       }
     );

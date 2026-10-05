@@ -1,0 +1,30 @@
+[package]
+name = "template-bevy"
+description = "Bevy game starter"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[features]
+default = ["dim2", "networked", "mcp"]
+dim2 = ["game/dim2"]
+dim3 = ["game/dim3"]
+networked = ["game/networked"]
+mcp = ["game/mcp", "game-assets?/mcp"]
+skein = ["dep:game-assets", "bevy/bevy_gltf"]
+web = ["game/web"]
+dev = ["game/dev"]
+dynamic_linking = ["game/dynamic_linking"]
+trace_chrome = ["game/trace_chrome"]
+trace_tracy = ["game/trace_tracy"]
+
+[dependencies]
+bevy.workspace = true
+clap.workspace = true
+game.workspace = true
+game-assets = { workspace = true, optional = true }
+game-settings.workspace = true
+
+[lints]
+workspace = true

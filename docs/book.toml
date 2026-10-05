@@ -1,0 +1,11 @@
+[book]
+title = "Bevy game template"
+language = "en"
+src = "src"
+
+[build]
+build-dir = "book"
+
+[output.html]
+default-theme = "light"
+preferred-dark-theme = "navy"

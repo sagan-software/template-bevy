@@ -2,7 +2,7 @@
 # See: https://doc.rust-lang.org/clippy/lint_configuration.html
 
 # Minimum Supported Rust Version - matches rust-toolchain.toml
-msrv = "1.96.1"
+msrv = "1.99.0"
 
 # Allow dbg! macros in test code for debugging
 allow-dbg-in-tests = true

@@ -1,3 +1,25 @@
 [target.x86_64-pc-windows-msvc]
 linker = "rust-lld.exe"
 rustdocflags = ["-Clinker=rust-lld.exe"]
+
+# Bevy stable optimization profiles. https://bevy.org/learn/quick-start/getting-started/setup/
+[profile.dev]
+opt-level = 1
+debug = 1
+
+[profile.dev.package."*"]
+opt-level = 3
+
+[profile.release]
+codegen-units = 1
+lto = "thin"
+strip = "debuginfo"
+
+[profile.wasm-release]
+inherits = "release"
+opt-level = "s"
+strip = "debuginfo"
+
+
+[alias]
+xtask = "run --manifest-path xtask/Cargo.toml --"

@@ -1,0 +1,52 @@
+# Project maintenance
+
+Use ordinary Cargo independently of Nix. Nix supplies pinned compilers, native
+libraries, and workflow tools. Preserve unrelated user changes.
+
+## Dependency updates
+
+Before implementation, verify the latest stable Bevy release, plugins, and Rust
+toolchain against official release sources. Check plugin compatibility with
+Bevy and the required targets before selecting versions.
+Update manifests and lockfiles together, then validate generated projects.
+Record the verification date, source links, selected versions, and compatibility
+blockers in `docs/src/dependencies.md`. Treat template pins as reproducible
+snapshots that require verification before use.
+
+## Structure and documentation
+
+Keep reusable domain code in `crates/` behind small plugin APIs.
+Retain validated settings internally and parse textual values at ingress.
+Keep imports flat with one item per statement. Run `cargo xtask imports`.
+
+Keep README focused on generation, launch, controls, and links.
+Document technical behavior in the mdBook under `docs/src/`.
+When behavior changes, update its chapter and the generated README if applicable.
+When adding a chapter, update `docs/src/SUMMARY.md`.
+When recording a check, distinguish compilation, automated tests, and runtime evidence.
+
+`CLAUDE.md` is a relative symlink to this file. Run `cargo xtask setup` after
+generation because cargo-generate skips symlinks. Keep repository skills in
+`.agents/skills` and Codex configuration in `.codex`.
+
+## Verification
+
+Run these checks after the final edit:
+
+```sh
+cargo fmt --all -- --check
+cargo test
+cargo clippy --all-targets --all-features -- -D warnings
+cargo xtask check
+nix run .#dylint
+nix flake check
+```
+
+Run `cargo xtask generate-matrix` in a clean generation destination.
+Verify normal and inspector launches, movement and boost, actual authority
+receipts, native dimensions, and generated browser output before committing.
+Build the book and inspect desktop and mobile rendering.
+Record exact coverage gaps instead of describing compilation as behavioral proof.
+
+Use the configured user Git identity. Commit only the requested changes after
+verification. Inspect commit author, committer, message, and trailers before pushing.

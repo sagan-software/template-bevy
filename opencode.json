@@ -1,0 +1,14 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "instructions": ["AGENTS.md"],
+  "mcp": {
+    "bevy-brp": {
+      "type": "local",
+      "command": ["bevy_brp_mcp"],
+      "enabled": true,
+      "environment": {
+        "RUST_LOG": "info"
+      }
+    }
+  }
+}

@@ -1,0 +1,23 @@
+[package]
+name = "game-physics"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[features]
+default = []
+dim2 = ["dep:bevy_rapier2d"]
+dim3 = ["dep:bevy_rapier3d"]
+networked = ["dep:lightyear"]
+
+[dependencies]
+bevy.workspace = true
+bevy_rapier2d = { workspace = true, optional = true }
+bevy_rapier3d = { workspace = true, optional = true }
+game-settings.workspace = true
+lightyear = { workspace = true, optional = true }
+serde.workspace = true
+
+[lints]
+workspace = true

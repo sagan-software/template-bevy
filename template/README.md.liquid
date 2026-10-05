@@ -1,0 +1,40 @@
+# {{project-name}}
+
+![Game starter logo](docs/src/media/logo.svg)
+
+[![Bevy 0.19.1](https://img.shields.io/badge/Bevy-0.19.1-232326)](https://bevy.org/)
+[![Rust 1.99](https://img.shields.io/badge/Rust-1.99-a85a32)](https://www.rust-lang.org/)
+[![MIT](https://img.shields.io/badge/license-MIT-666666)](LICENSE)
+
+A Bevy {{dimension}} game with Rapier physics.{% if networked %} Lightyear networking is enabled.{% endif %}
+
+Install Rust and native libraries using [Bevy's setup guide](https://bevy.org/learn/quick-start/getting-started/setup/),
+or run `nix develop` for the pinned environment.
+
+```sh
+cargo xtask setup
+cargo run -p {{project-name}}
+```
+
+WASD or arrows move the player; Space boosts movement.
+{% if networked %}The left gamepad stick and south button also control movement and boost.
+{% endif %}
+![Template networked 2D demo](docs/src/media/demo.png)
+![Movement in the template networked 2D demo](docs/src/media/demo.gif)
+
+This starter media shows the template's networked 2D demo.
+Replace it with recordings of this project's selected mode before publishing.
+
+{% if mcp %}Run `cargo run -p {{project-name}} -- --editor` to inspect the world.
+BRP listens on localhost port 15702. Install `bevy_brp_mcp` 0.22.8 or use
+`nix develop` for the configured MCP server.
+{% endif %}
+{% if skein %}See [Blender assets](docs/src/assets.md) for Skein export and loading.
+{% endif %}
+{% if web %}Install Trunk and Binaryen, or use `nix develop`.
+Run `trunk serve` and open `http://127.0.0.1:8080`.
+If the inherited `NO_COLOR` value is `1`, use `NO_COLOR=true trunk serve` on Unix.
+{% endif %}
+Run `cargo xtask check` before publishing changes.
+See [development](docs/src/development.md) for prerequisites and commands.
+Build the documentation with `cargo xtask book`.

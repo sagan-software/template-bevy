@@ -4,15 +4,15 @@ target/
 
 /.envrc.local
 
-/AGENTS.md
-/CLAUDE.md
-/.mcp.json
-/opencode.json
 
 /.claude/
-/.codex/
+/.codex/*
+!/.codex/config.toml
 /.opencode/
 /.cursor/
 /.vscode/
 
 .DS_Store
+
+/docs/book/
+/dist/
