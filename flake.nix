@@ -111,6 +111,28 @@
           version = "0.1.0";
         };
         artifacts = craneLib.buildDepsOnly common;
+        # Validation uses dev/test profiles; release artifacts cannot satisfy them.
+        devArtifacts = craneLib.buildDepsOnly (common // { CARGO_PROFILE = ""; });
+        # Clippy needs all-feature metadata, without linking an all-feature application.
+        clippyArtifacts = craneLib.buildDepsOnly (
+          common
+          // {
+            CARGO_PROFILE = "";
+            cargoExtraArgs = "--locked --all-targets --all-features";
+            cargoBuildCommand = "true";
+            doCheck = false;
+          }
+        );
+        cacheTools = with pkgs; [
+          python3
+          sccache
+          ccache
+        ];
+        fastEnvironment = ''
+          if [ -f scripts/cargo-fast.py ] && [ "''${BEVY_BUILD_CACHE_DISABLE:-0}" != 1 ]; then
+            eval "$(python scripts/cargo-fast.py --shell-env)"
+          fi
+        '';
         package = craneLib.buildPackage (
           common
           // {
@@ -152,12 +174,16 @@
           name: inputs: text:
           pkgs.writeShellApplication {
             inherit name;
-            runtimeInputs = [ rust ] ++ native ++ libraries ++ inputs;
-            text = environment + text;
+            runtimeInputs = [ rust ] ++ native ++ libraries ++ cacheTools ++ inputs;
+            text = environment + fastEnvironment + text;
           };
         dylint = command "run-dylints" (lib.optionals supported [ lintBundle ]) (
           if supported then
-            ''sagan-lints --repo . --skip-clippy --workspace --all-targets --locked ${lintArgs} "$@"''
+            ''
+              # Dylint owns its compiler wrapper and does not support Cargo's build-dir override.
+              unset CARGO_BUILD_BUILD_DIR RUSTC_WRAPPER RUSTC_WORKSPACE_WRAPPER
+              sagan-lints --repo . --skip-clippy --workspace --all-targets --locked ${lintArgs} "$@"
+            ''
           else
             ''echo "The pinned Dylints bundle does not support ${system}." >&2; exit 2''
         );
@@ -246,7 +272,13 @@
           craneLib.mkCargoDerivation (
             common
             // {
-              cargoArtifacts = artifacts;
+              cargoArtifacts =
+                if name == "bench" then
+                  artifacts
+                else if name == "clippy" then
+                  clippyArtifacts
+                else
+                  devArtifacts;
               pname = "${appName}-${name}";
               nativeBuildInputs = native ++ extra;
               buildPhaseCargoCommand = script;
@@ -305,6 +337,21 @@
           };
         checks = {
           inherit package;
+          build-cache =
+            pkgs.runCommand "build-cache-tests"
+              {
+                nativeBuildInputs = [
+                  pkgs.python3
+                  pkgs.git
+                ];
+              }
+              ''
+                cp -r ${src}/scripts ./scripts
+                chmod -R u+w scripts
+                patchShebangs scripts
+                python -m unittest discover -s scripts -p 'test_*.py'
+                touch "$out"
+              '';
           fmt = treefmt.config.build.check src;
           clippy = gate "clippy" [ ] "cargo clippy --all-targets --all-features -- -D warnings";
           test = gate "test" [ ] "cargo test --locked";
@@ -324,7 +371,15 @@
           dylint = lintCrane.mkCargoDerivation (
             common
             // {
-              cargoArtifacts = lintCrane.buildDepsOnly common;
+              cargoArtifacts = lintCrane.buildDepsOnly (
+                common
+                // {
+                  CARGO_PROFILE = "";
+                  cargoExtraArgs = "--locked --all-targets";
+                  cargoBuildCommand = "true";
+                  doCheck = false;
+                }
+              );
               nativeBuildInputs = native ++ [ lintBundle ];
               buildPhaseCargoCommand = ''
                 # Keep the lint cache outside the source tree in writable sandbox storage.
@@ -339,8 +394,8 @@
         };
         formatter = treefmt.config.build.wrapper;
         devShells.core = pkgs.mkShell {
-          packages = [ rust ] ++ native ++ libraries;
-          shellHook = environment;
+          packages = [ rust ] ++ native ++ libraries ++ cacheTools;
+          shellHook = environment + fastEnvironment;
         };
         devShells.default = pkgs.mkShell {
           packages = [
@@ -348,10 +403,11 @@
           ]
           ++ native
           ++ libraries
+          ++ cacheTools
           ++ tools
           ++ lib.optionals mcpEnabled [ mcp ]
           ++ [ dylint ];
-          shellHook = environment;
+          shellHook = environment + fastEnvironment;
         };
       }
     );

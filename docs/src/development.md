@@ -38,6 +38,13 @@ Rustfmt formats Rust; nixfmt formats Nix. The import check requires one item per
 Individual commands include `.#test`, `.#clippy`, `.#features`, `.#bench`,
 `.#book`, `.#coverage`, and `.#generate-matrix`.
 
+## Worktree builds
+
+Before building in a worktree, read [build caches](builds.md).
+Use `python scripts/cargo-fast.py` to select the repository cache, compiler
+caches, and a worktree-specific Cargo build directory. The Nix shell applies
+this environment automatically. Ordinary Cargo remains available.
+
 ## Dylints
 
 The public [Dylints quick start](https://github.com/sagan-software/dylints)

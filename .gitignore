@@ -16,3 +16,5 @@ target/
 
 /docs/book/
 /dist/
+
+scripts/__pycache__/

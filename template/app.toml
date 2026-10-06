@@ -11,7 +11,7 @@ default = [{% if dimension == "2d" or dimension == "both" %}"dim2",{% endif %}{%
 dim2 = ["game/dim2"]
 dim3 = ["game/dim3"]
 networked = ["game/networked"]
-mcp = ["game/mcp", "game-assets?/mcp"]
+mcp = ["game/mcp"{% if skein %}, "game-assets?/mcp"{% endif %}]
 skein = ["dep:game-assets", "bevy/bevy_gltf"]
 web = ["game/web"]
 dev = ["game/dev"]
