@@ -35,4 +35,5 @@ mod camera;
 mod dimensions;
 mod logging;
 mod plugin;
+mod shader_scene;
 pub use self::plugin::GamePlugin as Plugin;

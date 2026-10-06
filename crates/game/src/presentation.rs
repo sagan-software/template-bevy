@@ -28,6 +28,7 @@ impl Plugin for PresentationPlugin {
             not(target_family = "wasm") => { app.add_plugins(crate::particles::ParticlePlugin); }
             _ => {}
         }
+        app.add_plugins(crate::shader_scene::ShaderScenePlugin);
         app.add_systems(Startup, setup_scene).add_systems(
             PostUpdate,
             draw_network_bodies

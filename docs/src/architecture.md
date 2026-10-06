@@ -7,6 +7,9 @@ and runs the application. A generated project's package name belongs to this cra
 `crates/physics` owns Rapier integration and replicated planar physics state.
 `crates/settings` owns validated timing values and configuration errors.
 `crates/assets` adds optional Skein glTF component ingestion.
+
+`crates/shaders` owns embedded WGSL, typed materials, and shader pipeline registration.
+Rendered starter scenes display its sample; the headless authority remains separate.
 `xtask` implements portable project checks and instruction-link setup.
 
 Gameplay and asset integration expose `Plugin` as their composition entry point.

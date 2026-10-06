@@ -3826,6 +3826,7 @@ dependencies = [
  "criterion 0.8.2",
  "game-physics",
  "game-settings",
+ "game-shaders",
  "lightyear",
  "serde",
  "thiserror 2.0.21",
@@ -3861,6 +3862,13 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.21",
  "toml",
+]
+
+[[package]]
+name = "game-shaders"
+version = "0.1.0"
+dependencies = [
+ "bevy",
 ]
 
 [[package]]

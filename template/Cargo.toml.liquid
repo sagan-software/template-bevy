@@ -1,7 +1,7 @@
 [workspace]
 resolver = "3"
 members = ["crates/*", "xtask"]
-default-members = ["crates/app", "crates/game", "crates/settings", "crates/physics", "xtask"{% if skein %}, "crates/assets"{% endif %}]
+default-members = ["crates/app", "crates/game", "crates/settings", "crates/physics", "crates/shaders", "xtask"{% if skein %}, "crates/assets"{% endif %}]
 {% unless skein %}exclude = ["crates/assets"]{% endunless %}
 
 # Dylint 6.0.3 workspace metadata: https://github.com/trailofbits/dylint/tree/v6.0.3#workspace-metadata
@@ -40,6 +40,7 @@ game = { path = "crates/game", default-features = false }
 game-assets = { path = "crates/assets" }
 game-physics = { path = "crates/physics", default-features = false }
 game-settings = { path = "crates/settings" }
+game-shaders = { path = "crates/shaders", default-features = false }
 humantime = "2.4.0"
 lightyear = { version = "0.30.1", default-features = false, features = [
   "std",

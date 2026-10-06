@@ -8,12 +8,12 @@ autobenches = false
 
 [features]
 default = []
-dim2 = ["bevy/2d", "game-physics/dim2", "bevy_hanabi?/2d"]
-dim3 = ["bevy/3d", "game-physics/dim3", "bevy_hanabi?/3d"]
+dim2 = ["bevy/2d", "game-physics/dim2", "game-shaders/dim2", "bevy_hanabi?/2d"]
+dim3 = ["bevy/3d", "game-physics/dim3", "game-shaders/dim3", "bevy_hanabi?/3d"]
 networked = ["dep:lightyear", "dep:bevy_enhanced_input", "dep:bevy_hanabi", "dep:serde", "dep:thiserror", "game-physics/networked"]
 mcp = ["dep:bevy_brp_extras", "dep:bevy-inspector-egui", "bevy/bevy_remote", "bevy/sysinfo_plugin"]
 web = ["bevy/webgl2"]
-dev = ["bevy/dev"]
+dev = ["bevy/dev", "game-shaders/dev"]
 dynamic_linking = ["bevy/dynamic_linking"]
 trace_chrome = ["bevy/trace_chrome"]
 trace_tracy = ["bevy/trace_tracy"]
@@ -23,6 +23,7 @@ bevy.workspace = true
 bevy_enhanced_input = { workspace = true, optional = true }
 game-physics.workspace = true
 game-settings.workspace = true
+game-shaders.workspace = true
 lightyear = { workspace = true, optional = true }
 serde = { workspace = true, optional = true }
 

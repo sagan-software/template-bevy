@@ -8,7 +8,7 @@
 
 A Bevy game starter with Rapier physics. Choose 2D, 3D, or both; add networking,
 Blender/Skein assets, MCP inspection, and browser support during generation.
-Cargo works independently of Nix.
+WGSL shader materials are included in every generated game. Cargo works independently of Nix.
 
 ```sh
 cargo install cargo-generate --version 0.25.0 --locked
@@ -36,6 +36,7 @@ starter media and their own README.
 [Architecture](docs/src/architecture.md) ·
 [Configuration](docs/src/configuration.md) ·
 [Blender assets](docs/src/assets.md) ·
+[Shaders](docs/src/shaders.md) ·
 [Dependency compatibility](docs/src/dependencies.md)
 
 Build the public documentation with `cargo xtask book`.

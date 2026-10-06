@@ -49,6 +49,18 @@ Split crates only when timings show that the boundary reduces recompilation.
 Run focused package checks while editing, then every required verification gate before handoff.
 Record cold, cached-worktree, and edit-build timings with `--timings`.
 
+## Shaders
+
+Keep portable shader sources and typed materials in `crates/shaders`.
+Use Bevy's WGSL material interfaces for native and browser starter rendering.
+Retain the shader crate in every generated project, independently of optional integrations.
+Register shaders through its plugin and preserve embedded paths across application renames.
+
+Keep WGSL bindings and Rust uniform types aligned.
+For WebGL2, retain fragment shaders within supported capabilities; compute effects require a separate WebGPU design.
+Before changing shaders, read `docs/src/shaders.md`.
+Run shader tests and inspect actual native and generated browser rendering before committing.
+
 ## Verification
 
 Run these checks after the final edit:

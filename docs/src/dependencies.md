@@ -59,3 +59,11 @@ Bevy Enhanced Input 0.26.0 emits transient `MovementAxis2D` conversion warnings
 for its initial Boolean snapshot in native networking mode. Runtime checks must
 still verify vector input, authority receipts, action release, and interpolation.
 The template does not suppress these upstream warnings.
+
+Shader support uses Bevy's built-in Material2d and Material APIs, with WGSL
+embedded through its asset loader. Bevy 0.19.1 and Rust 1.99.0 remained the latest
+stable releases when checked on 2026-10-05 against their official
+[Bevy release](https://github.com/bevyengine/bevy/releases/tag/v0.19.1) and
+[Rust release](https://github.com/rust-lang/rust/releases/tag/1.99.0).
+The existing lockfile selects wgpu/Naga 29.0.4 and naga_oil 0.22.0.
+See [shaders](shaders.md) for source interfaces and browser restrictions.

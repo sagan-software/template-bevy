@@ -1,0 +1,22 @@
+[package]
+name = "game-shaders"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[features]
+default = []
+dim2 = ["bevy/2d"]
+dim3 = ["bevy/3d"]
+dev = ["bevy/embedded_watcher", "bevy/file_watcher"]
+
+[dependencies]
+bevy = { workspace = true, features = ["bevy_asset", "bevy_render", "bevy_shader"] }
+
+[[example]]
+name = "material"
+required-features = ["dim2"]
+
+[lints]
+workspace = true

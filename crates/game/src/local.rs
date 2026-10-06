@@ -59,6 +59,7 @@ impl Plugin for LocalPlugin {
             self.config.tick_rate().period(),
         ))
         .add_plugins(PhysicsPlugin::default().with_tick_rate(self.config.tick_rate()))
+        .add_plugins(crate::shader_scene::ShaderScenePlugin)
         .add_systems(Startup, setup_scene)
         .add_systems(FixedUpdate, move_player.before(PhysicsSystems::Prepare));
         #[cfg(all(feature = "mcp", not(target_family = "wasm")))]
