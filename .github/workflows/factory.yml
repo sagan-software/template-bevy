@@ -1,0 +1,68 @@
+name: Factory checks and artifacts
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      build_ios:
+        description: Build the unsigned iOS scaffold on macOS
+        type: boolean
+        default: false
+permissions:
+  contents: read
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+      - run: python3 scripts/reserve.py 8
+      - run: nix develop -c python -m unittest discover -s scripts -p 'test_*.py'
+      - run: nix develop -c cargo fmt --all -- --check
+      - run: nix develop -c cargo clippy --all-targets --all-features -- -D warnings
+      - run: nix develop -c cargo test
+      - run: nix develop -c cargo xtask check
+      - run: nix run .#dylint
+      - run: nix flake check
+      - run: nix develop -c cargo xtask generate-matrix
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+      - run: python3 scripts/reserve.py 4
+      - run: mkdir -p target/generated
+      - run: >-
+          nix develop -c cargo generate --path . --name game-factory
+          --destination target/generated --no-workspace --vcs none --silent --allow-commands
+          --define dimension=2d --define factory=true --define networked=false
+          --define skein=false --define mcp=false --define web=true
+      - run: cd target/generated/game-factory && nix develop path:. -c bash scripts/web.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: itch-web
+          path: target/generated/game-factory/dist/game-factory-web.zip
+  android:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+      - run: python3 scripts/reserve.py 8
+      - run: nix develop .#android -c bash scripts/android.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-debug
+          path: dist/android/*
+  ios:
+    runs-on: macos-latest
+    if: github.event_name == 'workflow_dispatch' && inputs.build_ios
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+      - run: python3 scripts/reserve.py 8
+      - run: >-
+          xcodebuild -project platform/ios/game-factory.xcodeproj -scheme hello
+          -configuration Debug -sdk iphonesimulator
+          -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
+# Butler and store submission are deliberately absent from CI.

@@ -52,11 +52,11 @@ Record cold, cached-worktree, and edit-build timings with `--timings`.
 ## Shaders
 
 Keep portable shader sources and typed materials in `crates/shaders`.
-Use Bevy's WGSL material interfaces for native and browser starter rendering.
+Use Bevy's WESL material interfaces for native and browser starter rendering.
 Retain the shader crate in every generated project, independently of optional integrations.
 Register shaders through its plugin and preserve embedded paths across application renames.
 
-Keep WGSL bindings and Rust uniform types aligned.
+Keep WESL bindings and Rust uniform types aligned.
 For WebGL2, retain fragment shaders within supported capabilities; compute effects require a separate WebGPU design.
 Before changing shaders, read `docs/src/shaders.md`.
 Run shader tests and inspect actual native and generated browser rendering before committing.
@@ -83,3 +83,13 @@ Record exact coverage gaps instead of describing compilation as behavioral proof
 
 Use the configured user Git identity. Commit only the requested changes after
 verification. Inspect commit author, committer, message, and trailers before pushing.
+
+## Factory releases
+
+Read `docs/src/factory.md` before changing packaging and `docs/ADOPTING.md` before
+changing the factory API. First launch is free on stores and pay-what-you-want on
+itch. Do not add billing, ads, paywalls, or license checks. Build through the
+flake, keep targets and caches inside this repo, and honor the Cargo job cap.
+Commit locally using Bill's identity. Do not push, publish, install on devices,
+or create release keys. Butler requires separate publication authorization even
+when credentials exist. Record unavailable integrations and exact failed gates.

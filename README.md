@@ -2,12 +2,12 @@
 
 ![Bevy game template logo](docs/src/media/logo.svg)
 
-[![Bevy 0.19.1](https://img.shields.io/badge/Bevy-0.19.1-232326)](https://bevy.org/)
+[![Bevy 0.20.0](https://img.shields.io/badge/Bevy-0.20.0-232326)](https://bevy.org/)
 [![Rust 1.99](https://img.shields.io/badge/Rust-1.99-a85a32)](https://www.rust-lang.org/)
 [![MIT](https://img.shields.io/badge/license-MIT-666666)](LICENSE)
 
-A Bevy game starter with Rapier physics. Choose 2D, 3D, or both; add networking,
-Blender/Skein assets, MCP inspection, and browser support during generation.
+A Bevy game starter with Rapier physics. Choose 2D, 3D, or both,
+MCP inspection, browser support, and a touch-first factory demo during generation.
 WGSL shader materials are included in every generated game. Cargo works independently of Nix.
 
 ```sh
@@ -41,3 +41,10 @@ starter media and their own README.
 
 Build the public documentation with `cargo xtask book`.
 Run this repository's demo with `cargo run -p template-bevy` or `nix run`.
+
+Select `factory=true` for the portrait touch demo. Tap or click ten targets in
+thirty seconds. Build its web release with `nix develop -c bash scripts/web.sh`.
+See [factory packaging](docs/src/factory.md), [adoption](docs/ADOPTING.md), and
+[store checklist](docs/STORE-CHECKLIST.md). First launch is free on stores and
+pay-what-you-want on itch. Lightyear, Skein, Hanabi, and inspector-egui await
+Bevy 0.20 releases; see [compatibility](docs/src/dependencies.md).

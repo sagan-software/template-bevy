@@ -18,3 +18,8 @@ target/
 /dist/
 
 scripts/__pycache__/
+
+/local/
+/platform/android/.gradle/
+/platform/android/app/build/
+/platform/android/app/src/main/jniLibs/

@@ -9,14 +9,13 @@ publish = false
 default = []
 dim2 = ["dep:bevy_rapier2d"]
 dim3 = ["dep:bevy_rapier3d"]
-networked = ["dep:lightyear"]
+networked = [] # Deferred until Lightyear supports Bevy 0.20.
 
 [dependencies]
 bevy.workspace = true
 bevy_rapier2d = { workspace = true, optional = true }
 bevy_rapier3d = { workspace = true, optional = true }
 game-settings.workspace = true
-lightyear = { workspace = true, optional = true }
 serde.workspace = true
 
 [lints]

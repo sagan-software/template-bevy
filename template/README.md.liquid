@@ -2,7 +2,7 @@
 
 ![Game starter logo](docs/src/media/logo.svg)
 
-[![Bevy 0.19.1](https://img.shields.io/badge/Bevy-0.19.1-232326)](https://bevy.org/)
+[![Bevy 0.20.0](https://img.shields.io/badge/Bevy-0.20.0-232326)](https://bevy.org/)
 [![Rust 1.99](https://img.shields.io/badge/Rust-1.99-a85a32)](https://www.rust-lang.org/)
 [![MIT](https://img.shields.io/badge/license-MIT-666666)](LICENSE)
 
@@ -25,7 +25,7 @@ WASD or arrows move the player; Space boosts movement.
 This starter media shows the template's networked 2D demo.
 Replace it with recordings of this project's selected mode before publishing.
 
-{% if mcp %}Run `cargo run -p {{project-name}} -- --editor` to inspect the world.
+{% if mcp %}The graphical inspector is unavailable on Bevy 0.20. BRP remains enabled.
 BRP listens on localhost port 15702. Install `bevy_brp_mcp` 0.22.8 or use
 `nix develop` for the configured MCP server.
 {% endif %}
@@ -39,3 +39,10 @@ Run `cargo xtask check` before publishing changes.
 See [development](docs/src/development.md) for prerequisites and commands.
 Embedded WGSL materials and a rendered sample are included. See [shaders](docs/src/shaders.md) for editing and browser support.
 Build the documentation with `cargo xtask book`.
+
+Select `factory=true` for the portrait touch demo. Tap or click ten targets in
+thirty seconds. Build its web release with `nix develop -c bash scripts/web.sh`.
+See [factory packaging](docs/src/factory.md), [adoption](docs/ADOPTING.md), and
+[store checklist](docs/STORE-CHECKLIST.md). First launch is free on stores and
+pay-what-you-want on itch. Lightyear, Skein, Hanabi, and inspector-egui await
+Bevy 0.20 releases; see [compatibility](docs/src/dependencies.md).

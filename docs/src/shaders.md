@@ -7,16 +7,16 @@ not depend on Blender assets, networking, inspection, or the generation options.
 
 ## Selected approach
 
-Verified on 2026-10-05 against the latest stable Bevy 0.19.1 and Rust 1.99.0.
-The template uses WGSL with typed Rust materials, following Bevy's
-[2D material example](https://github.com/bevyengine/bevy/blob/v0.19.1/examples/shader/shader_material_2d.rs)
-and [3D material example](https://github.com/bevyengine/bevy/blob/v0.19.1/examples/shader/shader_material.rs).
-The locked renderer uses wgpu and Naga 29.0.4 with naga_oil 0.22.0.
+Verified on 2026-10-14 against the latest stable Bevy 0.20.0 and Rust 1.99.0.
+The template uses WESL with typed Rust materials, following Bevy's
+[2D material example](https://github.com/bevyengine/bevy/blob/v0.20.0/examples/shader/shader_material_2d.rs)
+and [3D material example](https://github.com/bevyengine/bevy/blob/v0.20.0/examples/shader/shader_material.rs).
+The locked renderer uses wgpu and Naga 30.
 No additional shader compiler, nightly toolchain, or graphics plugin is required.
 
-[WGSL](https://www.w3.org/TR/WGSL/) is the WebGPU shading language.
-Bevy adds its own import and material binding substitutions before WGSL validation.
-This template targets that Bevy 0.19.1 interface rather than claiming complete
+[WESL](https://wesl-lang.dev/) adds imports and conditional compilation to WGSL.
+Bevy resolves WESL imports and supplies material constants before WGSL validation.
+This template targets that Bevy 0.20.0 interface rather than claiming complete
 conformance with every WGSL extension or hardware capability.
 
 [Rust GPU](https://github.com/Rust-GPU/rust-gpu) compiles Rust shader crates to
@@ -27,12 +27,12 @@ also describes the separate compiler and SPIRV-Tools build.
 A browser integration needs an additional supported conversion path to WGSL or
 GLSL. Rust GPU can suit a project that needs shared CPU/GPU Rust code, but its
 compiler pin and conversion pipeline add build and compatibility work here.
-WGSL fits this template's stable compiler, existing Bevy renderer, and browser target.
+WESL fits this template's stable compiler, existing Bevy renderer, and browser target.
 
 ## Files and bindings
 
-- `crates/shaders/src/shaders/pattern2d.wgsl` imports Bevy's 2D vertex output.
-- `crates/shaders/src/shaders/pattern3d.wgsl` imports Bevy's 3D vertex output.
+- `crates/shaders/src/shaders/pattern2d.wesl` imports Bevy's 2D vertex output.
+- `crates/shaders/src/shaders/pattern3d.wesl` imports Bevy's 3D vertex output.
 - `PatternMaterial2d` implements `Material2d` when `dim2` is enabled.
 - `PatternMaterial3d` implements `Material` when `dim3` is enabled.
 - `game_shaders::Plugin` embeds both files and installs the selected material pipelines.
@@ -43,8 +43,8 @@ as well as both material dimensions.
 
 Each material stores a `LinearRgba` color and defaults to white.
 Rust's `AsBindGroup` maps that color to binding 0 as one 16-byte `vec4<f32>` uniform.
-Bevy supplies the material bind group through `#{MATERIAL_BIND_GROUP}`.
-Keep Rust's binding attributes and WGSL's group, binding, and field types aligned.
+Bevy supplies the material bind group through `constants::MATERIAL_BIND_GROUP`.
+Keep Rust's binding attributes and WESL's group, binding, and field types aligned.
 
 Meshes must provide UV coordinates through `Mesh::ATTRIBUTE_UV_0`.
 The fragment repeats eight diagonal bands per dimensionless UV unit.
@@ -52,7 +52,7 @@ Bright bands cover half each repetition; dark bands use 30% linear RGB brightnes
 The shader retains the color's alpha, while the material's opaque mode does not blend transparency.
 The 2D and 3D materials have separate vertex interfaces and asset types.
 
-Shader files are [embedded assets](https://github.com/bevyengine/bevy/blob/v0.19.1/crates/bevy_asset/src/io/embedded/mod.rs).
+Shader files are [embedded assets](https://github.com/bevyengine/bevy/blob/v0.20.0/crates/bevy_asset/src/io/embedded/mod.rs).
 Their paths begin with `embedded://game_shaders/shaders/` and remain stable when
 the application is renamed. Native packages and Wasm modules contain the source;
 no loose shader files or Trunk copy directives are required.
@@ -90,20 +90,20 @@ cargo run -p game-shaders --example material --features dim2
 ```
 
 Keep shader ownership in this crate so unrelated gameplay edits can reuse it.
-Before changing uniforms, update the Rust material and WGSL declaration together.
+Before changing uniforms, update the Rust material and WESL declaration together.
 When adding another material, register its source and pipeline through the shader plugin.
 
 ## Development and browser targets
 
-Edit the WGSL files directly. Ordinary builds embed the edited bytes during compilation.
+Edit the WESL files directly. Ordinary builds embed the edited bytes during compilation.
 For native source watching, run the application with `--features dev`.
 The shader crate enables Bevy's embedded asset watcher and file watcher in that mode.
 Keep features consistent across workers to retain the matching build cache.
 
 The existing `web` feature selects WebGL2 for `wasm32-unknown-unknown`.
-[wgpu 29.0.4](https://github.com/gfx-rs/wgpu/blob/v29.0.4/README.md)
+[wgpu 30](https://github.com/gfx-rs/wgpu/blob/v30.0.0/README.md)
 supports native backends, WebGL2, and WebGPU.
-Its WebGL backend translates WGSL to GLSL through Naga.
+Bevy compiles WESL to WGSL; the WebGL backend translates WGSL to GLSL through Naga.
 The starter fragment uses float32 UV arithmetic and a color uniform.
 It uses no compute stages, storage buffers, textures, subgroup operations, or float64 values.
 

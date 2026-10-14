@@ -1,3 +1,6 @@
+// Keep incompatible plugins out of generated Bevy 0.20 applications.
+if variable::get("networked") { throw "Lightyear has no Bevy 0.20 release. Select networked=false."; }
+if variable::get("skein") { throw "Skein has no Bevy 0.20 release. Select skein=false."; }
 // Remove inspection configuration when its endpoint is omitted.
 if !variable::get("mcp") {
     file::delete(".mcp.json");

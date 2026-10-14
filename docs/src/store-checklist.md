@@ -1,0 +1,1 @@
+{{#include ../STORE-CHECKLIST.md}}

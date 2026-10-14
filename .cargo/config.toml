@@ -5,7 +5,7 @@ rustdocflags = ["-Clinker=rust-lld.exe"]
 # Bevy stable optimization profiles. https://bevy.org/learn/quick-start/getting-started/setup/
 [profile.dev]
 opt-level = 1
-debug = 1
+debug = 0
 
 [profile.dev.package."*"]
 opt-level = 3

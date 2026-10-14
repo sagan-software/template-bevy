@@ -8,7 +8,7 @@
 
 // Select the complete gameplay mode once while keeping the same crate-root exports.
 std::cfg_select! {
-    feature = "networked" => {
+    all(feature = "networked", bevy_020_lightyear) => {
         mod components;
         mod inputs;
         mod inspection;

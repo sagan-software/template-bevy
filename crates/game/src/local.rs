@@ -38,6 +38,9 @@ impl LocalPlugin {
 impl Plugin for LocalPlugin {
     /// Adds the renderer, physics, scene, and input systems.
     fn build(&self, app: &mut App) {
+        if self.is_editor_enabled {
+            warn!("Inspector unavailable: no Bevy 0.20 release");
+        }
         app.register_type::<Config>();
         app.add_plugins(
             DefaultPlugins
@@ -62,12 +65,15 @@ impl Plugin for LocalPlugin {
         .add_plugins(crate::shader_scene::ShaderScenePlugin)
         .add_systems(Startup, setup_scene)
         .add_systems(FixedUpdate, move_player.before(PhysicsSystems::Prepare));
+        #[cfg(feature = "factory")]
+        app.add_plugins(factory::FactoryPlugin::default());
         #[cfg(all(feature = "mcp", not(target_family = "wasm")))]
         {
             app.add_plugins((
                 bevy::remote::RemotePlugin::default(),
                 bevy_brp_extras::BrpExtrasPlugin,
             ));
+            #[cfg(bevy_020_inspector)]
             if self.is_editor_enabled {
                 app.add_plugins((
                     bevy_inspector_egui::bevy_egui::EguiPlugin::default(),

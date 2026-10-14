@@ -15,7 +15,10 @@ impl bevy::prelude::Plugin for Plugin {
     /// Installs reflected component ingestion at the asset boundary.
     fn build(&self, app: &mut bevy::prelude::App) {
         // The application owns BRP. Skein only adds ingestion and its extensions.
+        #[cfg(bevy_020_skein)]
         app.add_plugins(bevy_skein::SkeinPlugin { handle_brp: false });
+        let _ = app;
+        bevy::log::warn!("Skein unavailable: no Bevy 0.20 release");
     }
 }
 

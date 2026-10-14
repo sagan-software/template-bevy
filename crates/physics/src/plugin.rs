@@ -60,6 +60,7 @@ impl Plugin for PhysicsPlugin {
     fn build(&self, app: &mut App) {
         // A length unit of 100 world units preserves pixel-scale contact tolerances.
         let initialization = RapierContextInitialization::InitializeDefaultRapierContext {
+            broad_phase_optimization_strategy: default(),
             integration_parameters: IntegrationParameters {
                 length_unit: 100.0,
                 ..default()

@@ -30,7 +30,7 @@ fn planar_material_has_an_embedded_shader_and_editable_color() {
     };
     assert_eq!(
         path.to_string(),
-        "embedded://game_shaders/shaders/pattern2d.wgsl"
+        "embedded://game_shaders/shaders/pattern2d.wesl"
     );
 }
 
@@ -48,7 +48,7 @@ fn spatial_material_has_an_embedded_shader_and_editable_color() {
     };
     assert_eq!(
         path.to_string(),
-        "embedded://game_shaders/shaders/pattern3d.wgsl"
+        "embedded://game_shaders/shaders/pattern3d.wesl"
     );
 }
 
@@ -91,24 +91,31 @@ fn validate_fragment(
 ) -> Result<(), bevy::shader::ShaderCacheError> {
     use bevy::prelude::Assets;
     use bevy::prelude::Shader;
-    use bevy::render::render_resource::DownlevelFlags;
-    use bevy::render::render_resource::WgpuFeatures;
     use bevy::shader::ShaderCache;
     use bevy::shader::ShaderDefVal;
     let mut shaders = Assets::<Shader>::default();
     // This small vertex interface isolates the fragment's validation. Real Bevy
     // vertex interfaces and GPU pipelines are checked by native/browser launches.
-    let vertex_source = format!(
-        "#define_import_path {import_path}\nstruct VertexOutput {{ @builtin(position) position: vec4<f32>, @location(0) uv: vec2<f32>, }}"
-    );
-    let vertex = shaders.add(Shader::from_wgsl(vertex_source, "test/vertex.wgsl"));
+    let vertex_source = "struct VertexOutput { @builtin(position) position: vec4<f32>, @location(0) uv: vec2<f32>, }";
+    let path = format!("embedded://{}.wesl", import_path.replace("::", "/"));
+    let vertex = shaders.add(Shader::from_wesl(vertex_source, path));
     let fragment = shaders.add(shader);
-    let mut cache = ShaderCache::new(
-        (),
-        WgpuFeatures::empty(),
-        DownlevelFlags::empty(),
-        |(), _, _| Ok(()),
-    );
+    let mut cache = ShaderCache::new((), |(), source, _| {
+        let bevy::shader::ShaderCacheSource::Wgsl(source) = source else {
+            return Err(bevy::shader::ShaderCacheError::CreateShaderModule(
+                "Expected WGSL".into(),
+            ));
+        };
+        let module = naga::front::wgsl::parse_str(&source)
+            .map_err(|e| bevy::shader::ShaderCacheError::CreateShaderModule(e.to_string()))?;
+        naga::valid::Validator::new(
+            naga::valid::ValidationFlags::all(),
+            naga::valid::Capabilities::empty(),
+        )
+        .validate(&module)
+        .map_err(|e| bevy::shader::ShaderCacheError::CreateShaderModule(e.to_string()))?;
+        Ok(())
+    });
     for handle in [&vertex, &fragment] {
         cache.set_shader(
             handle.id(),
@@ -128,12 +135,12 @@ fn validate_fragment(
 fn embedded_fragments_load_and_validate_for_downlevel_rendering() {
     for (path, import_path) in [
         (
-            "embedded://game_shaders/shaders/pattern2d.wgsl",
-            "bevy_sprite::mesh2d_vertex_output",
+            "embedded://game_shaders/shaders/pattern2d.wesl",
+            "bevy_sprite_render::mesh2d::vertex_output",
         ),
         (
-            "embedded://game_shaders/shaders/pattern3d.wgsl",
-            "bevy_pbr::forward_io",
+            "embedded://game_shaders/shaders/pattern3d.wesl",
+            "bevy_pbr::render::forward_io",
         ),
     ] {
         let shader = load_shader(path);
@@ -144,6 +151,6 @@ fn embedded_fragments_load_and_validate_for_downlevel_rendering() {
 /// Confirms that the validation gate rejects malformed WGSL instead of passing any source.
 #[test]
 fn malformed_fragment_fails_validation() {
-    let shader = bevy::prelude::Shader::from_wgsl("@fragment fn fragment( {", "test/broken.wgsl");
-    assert!(validate_fragment(shader, "bevy_sprite::mesh2d_vertex_output").is_err());
+    let shader = bevy::prelude::Shader::from_wesl("@fragment fn fragment( {", "test/broken.wesl");
+    assert!(validate_fragment(shader, "bevy_sprite_render::mesh2d::vertex_output").is_err());
 }

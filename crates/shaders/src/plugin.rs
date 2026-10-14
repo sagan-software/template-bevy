@@ -13,9 +13,9 @@ impl bevy::prelude::Plugin for ShaderPlugin {
     /// Registers the selected materials without adding cameras or scene entities.
     fn build(&self, app: &mut App) {
         // Keep the planar source inside the executable instead of requiring a copied asset.
-        embedded_asset!(app, "shaders/pattern2d.wgsl");
+        embedded_asset!(app, "shaders/pattern2d.wesl");
         // Give the spatial source the same crate-owned namespace across generated projects.
-        embedded_asset!(app, "shaders/pattern3d.wgsl");
+        embedded_asset!(app, "shaders/pattern3d.wesl");
         // Bind the planar color uniform through Bevy's 2D material pipeline.
         #[cfg(feature = "dim2")]
         app.add_plugins(bevy::sprite_render::Material2dPlugin::<
@@ -47,12 +47,12 @@ mod tests {
         let registry = app.world().resource::<EmbeddedAssetRegistry>();
         for (path, source) in [
             (
-                "game_shaders/shaders/pattern2d.wgsl",
-                include_bytes!("shaders/pattern2d.wgsl").as_slice(),
+                "game_shaders/shaders/pattern2d.wesl",
+                include_bytes!("shaders/pattern2d.wesl").as_slice(),
             ),
             (
-                "game_shaders/shaders/pattern3d.wgsl",
-                include_bytes!("shaders/pattern3d.wgsl").as_slice(),
+                "game_shaders/shaders/pattern3d.wesl",
+                include_bytes!("shaders/pattern3d.wesl").as_slice(),
             ),
         ] {
             let asset = registry

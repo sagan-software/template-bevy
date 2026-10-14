@@ -14,7 +14,7 @@ pub(crate) fn execute(operation: Operation) -> io::Result<()> {
         Operation::Book => run("mdbook", &["build", "docs"]),
         Operation::Coverage => coverage(),
         Operation::Features => features(),
-        Operation::GenerateMatrix => generate_matrix(),
+        Operation::GenerateMatrix { destination } => generate_matrix(&destination),
         Operation::Check => check(),
     }
 }
@@ -246,21 +246,22 @@ fn check_documents() -> io::Result<()> {
 }
 
 /// Exercises distinct onboarding dimensions and optional integrations.
-fn generate_matrix() -> io::Result<()> {
+fn generate_matrix(destination: &Path) -> io::Result<()> {
     // Keep generated projects outside authored source and never overwrite them.
-    fs::create_dir_all("target/generated")?;
+    fs::create_dir_all(destination)?;
     // Share dependency artifacts while validating each onboarding choice in order.
     [
         ("local-2d", "2d", "false", "false", "false", "false"),
-        ("network-2d", "2d", "true", "false", "true", "false"),
-        ("local-3d", "3d", "false", "true", "true", "false"),
-        ("network-3d", "3d", "true", "false", "false", "false"),
-        ("mixed", "both", "true", "true", "true", "false"),
+        ("inspect-2d", "2d", "false", "false", "true", "false"),
+        ("local-3d", "3d", "false", "false", "true", "false"),
+        ("plain-3d", "3d", "false", "false", "false", "false"),
+        ("mixed", "both", "false", "false", "true", "false"),
         ("web-2d", "2d", "false", "false", "false", "true"),
-        ("web-3d", "3d", "true", "true", "false", "true"),
+        ("web-3d", "3d", "false", "false", "false", "true"),
+        ("factory-web", "2d", "false", "false", "false", "true"),
     ]
     .into_iter()
-    .try_for_each(generate_case)
+    .try_for_each(|case| generate_case(destination, case))
 }
 
 /// A fixed generator CLI case: name, dimension, networking, assets, MCP, and
@@ -275,12 +276,12 @@ type GenerationCase = (
 );
 
 /// Generates a fresh project and verifies the selected output paths.
-fn generate_case(case: GenerationCase) -> io::Result<()> {
-    let project = Path::new("target/generated").join(case.0);
+fn generate_case(destination: &Path, case: GenerationCase) -> io::Result<()> {
+    let project = destination.join(case.0);
     // Existing projects may contain user work and must remain untouched.
     ensure_project_absent(&project)?;
     // The generator must preserve its parent workspace before child validation.
-    generate_preserving_parent(case)?;
+    generate_preserving_parent(destination, case)?;
     verify_generated_project(&project, case.5 == "true")
 }
 
@@ -300,10 +301,10 @@ fn ensure_project_absent(project: &Path) -> io::Result<()> {
 }
 
 /// Checks that generation does not add a member to its parent workspace.
-fn generate_preserving_parent(case: GenerationCase) -> io::Result<()> {
+fn generate_preserving_parent(destination: &Path, case: GenerationCase) -> io::Result<()> {
     // Compare exact bytes because Cargo generation can silently edit workspace membership.
     let before = fs::read("Cargo.toml")?;
-    run_generator(case)?;
+    run_generator(destination, case)?;
     let after = fs::read("Cargo.toml")?;
     let is_preserved = before == after;
     is_preserved
@@ -312,9 +313,20 @@ fn generate_preserving_parent(case: GenerationCase) -> io::Result<()> {
 }
 
 /// Formats fixed CLI definitions without sending them through a shell.
-fn run_generator((name, dimension, networked, skein, mcp, web): GenerationCase) -> io::Result<()> {
+fn run_generator(
+    destination: &Path,
+    (name, dimension, networked, skein, mcp, web): GenerationCase,
+) -> io::Result<()> {
     // Only the generator boundary receives textual capability choices.
     let definitions = [
+        (
+            "factory",
+            if name == "factory-web" {
+                "true"
+            } else {
+                "false"
+            },
+        ),
         ("dimension", dimension),
         ("networked", networked),
         ("skein", skein),
@@ -330,7 +342,12 @@ fn run_generator((name, dimension, networked, skein, mcp, web): GenerationCase) 
         "--name",
         name,
         "--destination",
-        "target/generated",
+        destination.to_str().ok_or_else(|| {
+            io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "generation directory must be UTF-8",
+            )
+        })?,
         "--vcs",
         "none",
         "--no-workspace",
@@ -408,5 +425,28 @@ mod tests {
         assert_eq!(error.kind(), io::ErrorKind::Other);
         assert!(error.to_string().contains("false"));
         assert!(error.to_string().contains("failed with"));
+    }
+    /// Generation refuses existing projects before invoking cargo-generate.
+    #[test]
+    fn existing_project_is_preserved() {
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+        let error = super::ensure_project_absent(root).expect_err("existing directory");
+        assert_eq!(error.kind(), io::ErrorKind::AlreadyExists);
+        super::ensure_project_absent(&root.join("absent-generation-test-project"))
+            .expect("fresh destination");
+    }
+
+    /// Invalid native paths cannot cross cargo-generate's textual CLI boundary.
+    #[cfg(unix)]
+    #[test]
+    fn generator_rejects_non_utf8_destination() {
+        use std::os::unix::ffi::OsStrExt;
+        let destination = std::path::Path::new(std::ffi::OsStr::from_bytes(b"invalid-\xff"));
+        let error = super::run_generator(
+            destination,
+            ("test", "2d", "false", "false", "false", "false"),
+        )
+        .expect_err("non-UTF8 destination");
+        assert_eq!(error.kind(), io::ErrorKind::InvalidInput);
     }
 }

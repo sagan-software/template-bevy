@@ -1,7 +1,7 @@
-// Bevy 0.19.1 material interface: https://github.com/bevyengine/bevy/tree/v0.19.1/examples/shader
-#import bevy_pbr::forward_io::VertexOutput
+// Bevy 0.20.0 material interface: https://github.com/bevyengine/bevy/tree/v0.20.0/examples/shader
+import bevy_sprite_render::mesh2d::vertex_output::VertexOutput;
 
-@group(#{MATERIAL_BIND_GROUP}) @binding(0) var<uniform> material_color: vec4<f32>;
+@group(constants::MATERIAL_BIND_GROUP) @binding(0) var<uniform> material_color: vec4<f32>;
 
 @fragment
 fn fragment(mesh: VertexOutput) -> @location(0) vec4<f32> {

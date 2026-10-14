@@ -1,12 +1,13 @@
 [template]
 cargo_generate_version = ">=0.25.0"
 include = ["template/**"]
-ignore = ["target", ".direnv", ".git", "result*", ".claude/**", ".cursor/**", ".opencode/**", ".codex/AGENTS.md", ".codex/skills", "CLAUDE.md", "docs/book"]
+ignore = ["target", ".direnv", ".git", "result*", ".claude/**", ".cursor/**", ".opencode/**", ".codex/AGENTS.md", ".codex/skills", "CLAUDE.md", "docs/book", "local", "dist"]
 
 [placeholders]
+factory = { type = "bool", prompt = "Use touch-first factory example?", default = false }
 dimension = { type = "string", prompt = "Game dimensions", choices = ["2d", "3d", "both"], default = "2d" }
-networked = { type = "bool", prompt = "Enable Lightyear networking?", default = false }
-skein = { type = "bool", prompt = "Enable Blender/Skein assets?", default = false }
+networked = { type = "bool", prompt = "Lightyear unavailable on Bevy 0.20; leave false", default = false }
+skein = { type = "bool", prompt = "Skein unavailable on Bevy 0.20; leave false", default = false }
 mcp = { type = "bool", prompt = "Enable BRP/MCP inspection?", default = true }
 web = { type = "bool", prompt = "Enable browser builds with Trunk?", default = false }
 

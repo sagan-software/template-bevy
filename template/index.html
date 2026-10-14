@@ -1,3 +1,29 @@
+{% if factory %}
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>{{project-name}}</title>
+<link data-trunk rel="rust" data-cargo-profile="wasm-release" data-wasm-opt="s" href="crates/app/Cargo.toml" data-cargo-features="web" data-bin="{{project-name}}">
+<link data-trunk rel="copy-dir" href="assets">
+<link data-trunk rel="copy-dir" href="web">
+<link rel="icon" href="web/favicon.ico"><link rel="manifest" href="web/manifest.webmanifest"><meta name="theme-color" content="#14262d">
+<style>
+html,body{margin:0;width:100%;height:100%;background:#101d23;color:#edf1ef;font-family:sans-serif;overflow:hidden}
+body{display:flex;justify-content:center;align-items:center}
+#frame{width:min(100vw,430px);height:100dvh;max-height:900px;background:#14262d;position:relative}
+canvas{display:block;width:100%;height:100%;touch-action:none;outline:none}
+#factory-safe-area{position:absolute;visibility:hidden;pointer-events:none;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+#loading{position:absolute;inset:0;display:grid;place-content:center;text-align:center;font-size:18px;pointer-events:none}
+</style></head><body><div id="factory-safe-area"></div><main id="frame"><canvas id="game" aria-label="Hello target game. Tap 10 orange targets in 30 seconds."></canvas></main>
+<script>
+// Resume every Web Audio context synchronously inside the first trusted gesture.
+const contexts=[];
+const NativeAudioContext=window.AudioContext;
+if(NativeAudioContext){window.AudioContext=new Proxy(NativeAudioContext,{construct(Target,args){const context=new Target(...args);contexts.push(context);return context;}})}
+function unlock(){for(const context of contexts){if(context.state==='suspended'){context.resume().catch(console.error)}}}
+document.addEventListener('pointerdown',unlock,{capture:true});
+document.addEventListener('keydown',unlock,{capture:true});
+</script>
+</body></html>
+{% else %}
 <!doctype html>
 <html lang="en">
 <head>
@@ -14,3 +40,4 @@
 </head>
 <body><canvas id="game" tabindex="0" aria-label="Game. Move with WASD or arrow keys. Hold Space to boost."></canvas></body>
 </html>
+{% endif %}

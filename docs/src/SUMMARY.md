@@ -10,3 +10,6 @@
 - [Repository review](review.md)
 - [Build caches](builds.md)
 - [Shaders](shaders.md)
+- [Factory games and packaging](factory.md)
+  - [Adopting the factory](adopting.md)
+  - [Store checklist](store-checklist.md)

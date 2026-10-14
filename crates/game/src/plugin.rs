@@ -59,13 +59,13 @@ impl GamePlugin {
 impl bevy::prelude::Plugin for GamePlugin {
     /// Installs the selected gameplay mode through its owning plugin.
     fn build(&self, app: &mut App) {
-        #[cfg(feature = "networked")]
+        #[cfg(all(feature = "networked", bevy_020_lightyear))]
         app.add_plugins(crate::network_game::NetworkGamePlugin::new(
             self.config,
             self.is_editor_enabled,
             self.window_title,
         ));
-        #[cfg(not(feature = "networked"))]
+        #[cfg(not(all(feature = "networked", bevy_020_lightyear)))]
         app.add_plugins(crate::local::LocalPlugin::new(
             self.config,
             self.is_editor_enabled,

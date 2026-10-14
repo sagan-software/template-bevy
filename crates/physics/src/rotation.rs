@@ -35,7 +35,7 @@ impl Rotation {
     }
 }
 
-#[cfg(feature = "networked")]
+#[cfg(all(feature = "networked", bevy_020_lightyear))]
 impl lightyear::prelude::Diffable<Rot2> for Rotation {
     /// Returns the neutral correction baseline.
     fn base_value() -> Self {

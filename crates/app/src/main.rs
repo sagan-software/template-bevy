@@ -6,17 +6,24 @@
 //! returns configuration failures to its caller; reusable gameplay and validated
 //! settings remain in their respective workspace crates.
 
+#[cfg(not(feature = "factory-demo"))]
 use crate::cli::Cli;
+#[cfg(not(feature = "factory-demo"))]
 use bevy::prelude::App;
+#[cfg(not(feature = "factory-demo"))]
 use bevy::prelude::AppExit;
-#[cfg(not(target_family = "wasm"))]
+#[cfg(all(not(feature = "factory-demo"), not(target_family = "wasm")))]
 use clap::Parser;
+#[cfg(not(feature = "factory-demo"))]
 use game_settings::ApplicationError;
+#[cfg(not(feature = "factory-demo"))]
 use game_settings::Config;
 
+#[cfg(not(feature = "factory-demo"))]
 mod cli;
 
 /// Loads startup choices, composes the game, and hands control to Bevy.
+#[cfg(not(feature = "factory-demo"))]
 fn main() -> Result<AppExit, ApplicationError> {
     // Clap owns command-line syntax while `Config` owns semantic validation.
     // Keeping those boundaries separate gives each failure a useful message.
@@ -38,4 +45,10 @@ fn main() -> Result<AppExit, ApplicationError> {
     #[cfg(feature = "skein")]
     app.add_plugins(game_assets::Plugin);
     Ok(app.run())
+}
+
+/// Launch the touch-first factory example selected during generation.
+#[cfg(feature = "factory-demo")]
+fn main() {
+    hello::run_with_id(concat!("software.sagan.", env!("CARGO_PKG_NAME")));
 }

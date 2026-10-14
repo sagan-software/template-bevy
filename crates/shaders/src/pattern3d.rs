@@ -31,6 +31,6 @@ impl Default for PatternMaterial3d {
 impl Material for PatternMaterial3d {
     /// Selects the embedded WGSL fragment program for this dimension.
     fn fragment_shader() -> ShaderRef {
-        "embedded://game_shaders/shaders/pattern3d.wgsl".into()
+        "embedded://game_shaders/shaders/pattern3d.wesl".into()
     }
 }

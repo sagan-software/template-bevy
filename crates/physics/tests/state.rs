@@ -29,7 +29,7 @@ fn arena_shapes_preserve_coordinates_and_half_extents() {
 }
 
 /// Verifies corrections across translated positions and wrapped orientations.
-#[cfg(feature = "networked")]
+#[cfg(all(feature = "networked", bevy_020_lightyear))]
 #[test]
 fn network_corrections_restore_the_received_state() {
     use bevy::prelude::Rot2;

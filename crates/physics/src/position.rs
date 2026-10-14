@@ -17,7 +17,7 @@ pub struct Position(
     pub Vec2,
 );
 
-#[cfg(feature = "networked")]
+#[cfg(all(feature = "networked", bevy_020_lightyear))]
 impl lightyear::prelude::Diffable<Vec2> for Position {
     /// Returns the neutral correction baseline.
     fn base_value() -> Self {

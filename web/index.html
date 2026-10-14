@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Hello target</title>
+<link rel="icon" href="favicon.ico"><link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#14262d">
+<style>
+html,body{margin:0;width:100%;height:100%;background:#101d23;color:#edf1ef;font-family:sans-serif;overflow:hidden}
+body{display:flex;justify-content:center;align-items:center}
+#frame{width:min(100vw,430px);height:100dvh;max-height:900px;background:#14262d;position:relative}
+canvas{display:block;width:100%;height:100%;touch-action:none;outline:none}
+#factory-safe-area{position:absolute;visibility:hidden;pointer-events:none;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+#loading{position:absolute;inset:0;display:grid;place-content:center;text-align:center;font-size:18px;pointer-events:none}
+</style></head><body><div id="factory-safe-area"></div><main id="frame"><canvas id="game" aria-label="Hello target game. Tap 10 orange targets in 30 seconds."></canvas><div id="loading">Loading game...</div></main>
+<script>
+// Resume every Web Audio context synchronously inside the first trusted gesture.
+const contexts=[];
+const NativeAudioContext=window.AudioContext;
+if(NativeAudioContext){window.AudioContext=new Proxy(NativeAudioContext,{construct(Target,args){const context=new Target(...args);contexts.push(context);return context;}})}
+function unlock(){for(const context of contexts){if(context.state==='suspended'){context.resume().catch(console.error)}}}
+document.addEventListener('pointerdown',unlock,{capture:true});
+document.addEventListener('keydown',unlock,{capture:true});
+</script>
+<script type="module">
+import init from './game_factory.js';
+const loading=document.getElementById('loading');
+try{await init();loading.remove();}catch(error){if(error.message?.includes('Using exceptions for control flow')){loading.remove();}else{loading.textContent='Game failed to load. Reload to retry.';console.error(error);}}
+</script></body></html>

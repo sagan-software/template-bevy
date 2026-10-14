@@ -2,6 +2,7 @@
 
 use clap::Parser;
 use clap::Subcommand;
+use std::path::PathBuf;
 
 /// Public command-line entry point.
 #[derive(Debug, Parser)]
@@ -28,5 +29,42 @@ pub(crate) enum Operation {
     /// Check each supported optional feature.
     Features,
     /// Generate and verify the onboarding configurations.
-    GenerateMatrix,
+    GenerateMatrix {
+        /// Fresh directory for generated validation projects.
+        #[arg(long, default_value = "target/generated")]
+        destination: PathBuf,
+    },
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Cli;
+    use super::Operation;
+    use clap::Parser;
+    use std::path::Path;
+
+    /// Matrix runs preserve previous generated projects by choosing a fresh destination.
+    #[test]
+    fn matrix_destination_defaults_and_overrides() {
+        for (arguments, expected) in [
+            (vec!["xtask", "generate-matrix"], "target/generated"),
+            (
+                vec![
+                    "xtask",
+                    "generate-matrix",
+                    "--destination",
+                    "target/generated-final",
+                ],
+                "target/generated-final",
+            ),
+        ] {
+            let Operation::GenerateMatrix { destination } = Cli::try_parse_from(arguments)
+                .expect("valid matrix arguments")
+                .command
+            else {
+                panic!("expected generation operation");
+            };
+            assert_eq!(destination, Path::new(expected));
+        }
+    }
 }

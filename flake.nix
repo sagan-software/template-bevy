@@ -129,7 +129,13 @@
           ccache
         ];
         fastEnvironment = ''
-          if [ -f scripts/cargo-fast.py ] && [ "''${BEVY_BUILD_CACHE_DISABLE:-0}" != 1 ]; then
+          mkdir -p target local
+          printf 'Signature: 8a477f597d28d172789f06886806bc55\n' > target/CACHEDIR.TAG
+          printf 'Signature: 8a477f597d28d172789f06886806bc55\n' > local/CACHEDIR.TAG
+          export BEVY_BUILD_CACHE="$PWD/target/cache"
+          export CARGO_TARGET_DIR="$PWD/target"
+          export CARGO_BUILD_BUILD_DIR="$PWD/target/build"
+          if [ -f scripts/cargo-fast.py ] && [ "''${BEVY_BUILD_CACHE_DISABLE:-0}" != 1 ] && [ "''${#BEVY_BUILD_CACHE}" -lt 85 ]; then
             eval "$(python scripts/cargo-fast.py --shell-env)"
           fi
         '';
@@ -225,6 +231,10 @@
             cargo-llvm-cov
             cargo-nextest
             mdbook
+            wasm-bindgen-cli
+            cargo-ndk
+            imagemagick
+            zip
             binaryen
             cargo-flamegraph
             samply
@@ -393,6 +403,41 @@
           );
         };
         formatter = treefmt.config.build.wrapper;
+        devShells.android =
+          let
+            androidPkgs = import nixpkgs {
+              inherit system;
+              config = {
+                allowUnfree = true;
+                android_sdk.accept_license = true;
+              };
+            };
+            sdk = androidPkgs.androidenv.composeAndroidPackages {
+              platformVersions = [ "35" ];
+              buildToolsVersions = [ "35.0.0" ];
+              includeNDK = true;
+              ndkVersions = [ "27.2.12479018" ];
+              includeEmulator = false;
+            };
+          in
+          pkgs.mkShell {
+            packages = [
+              rust
+              sdk.androidsdk
+              pkgs.jdk17
+              pkgs.gradle
+              pkgs.cargo-ndk
+            ]
+            ++ native
+            ++ libraries
+            ++ cacheTools
+            ++ tools;
+            ANDROID_HOME = "${sdk.androidsdk}/libexec/android-sdk";
+            ANDROID_SDK_ROOT = "${sdk.androidsdk}/libexec/android-sdk";
+            ANDROID_NDK_HOME = "${sdk.androidsdk}/libexec/android-sdk/ndk/27.2.12479018";
+            ANDROID_NDK_ROOT = "${sdk.androidsdk}/libexec/android-sdk/ndk/27.2.12479018";
+            shellHook = environment + fastEnvironment;
+          };
         devShells.core = pkgs.mkShell {
           packages = [ rust ] ++ native ++ libraries ++ cacheTools;
           shellHook = environment + fastEnvironment;

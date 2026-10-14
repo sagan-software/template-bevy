@@ -19,9 +19,7 @@ fn profile_plugin(is_debug_build: bool) -> LogPlugin {
         } else {
             Level::WARN
         },
-        filter: defaults.filter,
-        custom_layer: defaults.custom_layer,
-        fmt_layer: defaults.fmt_layer,
+        ..defaults
     }
 }
 

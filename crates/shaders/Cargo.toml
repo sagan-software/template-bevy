@@ -18,5 +18,8 @@ bevy = { workspace = true, features = ["bevy_asset", "bevy_render", "bevy_shader
 name = "material"
 required-features = ["dim2"]
 
+[dev-dependencies]
+naga = { version = "30", features = ["wgsl-in"] }
+
 [lints]
 workspace = true

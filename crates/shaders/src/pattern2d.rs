@@ -31,6 +31,6 @@ impl Default for PatternMaterial2d {
 impl Material2d for PatternMaterial2d {
     /// Selects the embedded WGSL fragment program for this dimension.
     fn fragment_shader() -> ShaderRef {
-        "embedded://game_shaders/shaders/pattern2d.wgsl".into()
+        "embedded://game_shaders/shaders/pattern2d.wesl".into()
     }
 }
