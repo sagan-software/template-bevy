@@ -1,7 +1,7 @@
 [template]
 cargo_generate_version = ">=0.25.0"
 include = ["template/**"]
-ignore = ["target", ".direnv", ".git", "result*", ".claude/**", ".cursor/**", ".opencode/**", ".codex/AGENTS.md", ".codex/skills", "CLAUDE.md", "docs/book", "local", "dist"]
+ignore = ["target", ".direnv", ".git", "result*", ".claude/**", ".cursor/**", ".opencode/**", ".codex/AGENTS.md", ".codex/skills", "CLAUDE.md", "docs/book", "local", "dist", "platform/android/.gradle", "platform/android/app/build", "platform/android/app/src/main/jniLibs", "scripts/__pycache__", ".ruff_cache"]
 
 [placeholders]
 factory = { type = "bool", prompt = "Use touch-first factory example?", default = false }
