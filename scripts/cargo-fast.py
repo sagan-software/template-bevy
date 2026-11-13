@@ -1,7 +1,22 @@
 #!/usr/bin/env python3
-"""Run Cargo with repository-scoped worktree caches and compiler caches."""
+"""Run Cargo with repository-scoped worktree caches and compiler caches.
+
+Before a build the wrapper evicts cache entries under repositories/ that no
+live process uses. Each entry is one worktree or lane folder, or a
+repository's shared dependencies folder. An entry is in use while a wrapper
+holds its lock or a process names it in CARGO_TARGET_DIR or
+CARGO_BUILD_BUILD_DIR. Defaults:
+
+- BEVY_BUILD_MAX_IDLE_HOURS=6: remove entries unused for longer.
+- BEVY_BUILD_MAX_GIB=200: then remove least recently used entries until
+  repositories/ holds at most this many GiB.
+- BEVY_BUILD_EVICT_INTERVAL_SECONDS=600: check at most this often.
+
+A value of 0 turns that limit off.
+"""
 
 import argparse
+import fcntl
 import hashlib
 import json
 import os
@@ -12,6 +27,12 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
+
+DEFAULT_MAX_IDLE_HOURS = 6.0
+DEFAULT_MAX_GIB = 200.0
+DEFAULT_EVICT_INTERVAL_SECONDS = 600.0
+STAMP = ".cargo-fast-used"
 
 
 def lane_name(value: str) -> str:
@@ -382,6 +403,191 @@ def compiler_identity(command: str) -> dict[str, str | int]:
     }
 
 
+def limit(name: str, default: float) -> float:
+    """Read a non-negative limit; 0 turns it off."""
+    value = os.environ.get(name, "").strip()
+    if not value:
+        return default
+    try:
+        number = float(value)
+    except ValueError as error:
+        raise ValueError(f"{name} must be a number: {value}") from error
+    if number < 0 or number != number:
+        raise ValueError(f"{name} must be 0 or more: {value}")
+    return number
+
+
+def entry_lock(cache: Path, entry: Path) -> Path:
+    """Keep locks outside entries so removing one keeps its lock valid."""
+    name = hashlib.sha256(os.fsencode(entry)).hexdigest()
+    return cache / "locks" / f"{name}.lock"
+
+
+def lock_entry(cache: Path, entry: Path, shared: bool) -> int | None:
+    """Lock an entry; return None when a shared or exclusive lock is held."""
+    path = entry_lock(cache, entry)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    descriptor = os.open(path, os.O_RDWR | os.O_CREAT, 0o600)
+    try:
+        if shared:
+            fcntl.flock(descriptor, fcntl.LOCK_SH)
+        else:
+            fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        os.close(descriptor)
+        return None
+    return descriptor
+
+
+def cache_entries(cache: Path) -> list[Path]:
+    """List worktree, lane and dependency folders of every repository."""
+    entries = []
+    repositories = cache / "repositories"
+    if not repositories.is_dir():
+        return entries
+    for repository in sorted(repositories.iterdir()):
+        if repository.is_dir() and not repository.is_symlink():
+            entries.extend(
+                child
+                for child in sorted(repository.iterdir())
+                if child.is_dir()
+                and not child.is_symlink()
+                and child.name != "launchers"
+            )
+    return entries
+
+
+def last_used(entry: Path) -> float:
+    """Take the newest of the stamp and the folders Cargo writes on use."""
+    newest = 0.0
+    for path in (
+        entry / STAMP,
+        entry,
+        entry / "target",
+        entry / "build",
+        *entry.glob("target/*"),
+        *entry.glob("worktrees/*/build"),
+    ):
+        try:
+            newest = max(newest, path.lstat().st_mtime)
+        except OSError:
+            pass
+    return newest
+
+
+def disk_usage(path: Path) -> int:
+    """Count allocated bytes once per inode, without following links."""
+    total = 0
+    seen = set()
+    pending = [path]
+    while pending:
+        try:
+            with os.scandir(pending.pop()) as children:
+                for child in children:
+                    try:
+                        status = child.stat(follow_symlinks=False)
+                    except OSError:
+                        continue
+                    if status.st_nlink > 1:
+                        inode = (status.st_dev, status.st_ino)
+                        if inode in seen:
+                            continue
+                        seen.add(inode)
+                    total += status.st_blocks * 512
+                    if child.is_dir(follow_symlinks=False):
+                        pending.append(Path(child.path))
+        except OSError:
+            continue
+    return total
+
+
+def named_by_processes(proc: Path = Path("/proc")) -> set[Path]:
+    """Find cache folders that live processes name as Cargo outputs."""
+    named = set()
+    try:
+        processes = list(proc.iterdir())
+    except OSError:
+        return named
+    for process in processes:
+        if not process.name.isdigit():
+            continue
+        try:
+            environ = (process / "environ").read_bytes()
+        except OSError:
+            continue
+        for variable in environ.split(b"\0"):
+            name, _, value = variable.partition(b"=")
+            if name in (b"CARGO_TARGET_DIR", b"CARGO_BUILD_BUILD_DIR"):
+                named.add(Path(os.fsdecode(value)))
+    return named
+
+
+def evict(
+    cache: Path,
+    keep: list[Path],
+    now: float | None = None,
+    proc: Path = Path("/proc"),
+) -> list[Path]:
+    """Remove idle and least recently used entries; return removed ones."""
+    max_idle = limit("BEVY_BUILD_MAX_IDLE_HOURS", DEFAULT_MAX_IDLE_HOURS)
+    max_bytes = limit("BEVY_BUILD_MAX_GIB", DEFAULT_MAX_GIB) * 1024**3
+    interval = limit(
+        "BEVY_BUILD_EVICT_INTERVAL_SECONDS", DEFAULT_EVICT_INTERVAL_SECONDS
+    )
+    now = time.time() if now is None else now
+    marker = cache / "last-eviction"
+    try:
+        if now - marker.stat().st_mtime < interval:
+            return []
+    except OSError:
+        pass
+    cache.mkdir(parents=True, exist_ok=True)
+    marker.touch()
+    os.utime(marker, (now, now))
+    named = named_by_processes(proc)
+    keep = [path.resolve() for path in keep]
+    candidates = []
+    for entry in cache_entries(cache):
+        resolved = entry.resolve()
+        if any(
+            resolved == path or resolved in path.parents for path in keep
+        ) or any(
+            resolved == path or resolved in path.parents for path in named
+        ):
+            continue
+        candidates.append((last_used(entry), entry))
+    candidates.sort(key=lambda candidate: candidate[0])
+    removed = []
+
+    def remove(entry: Path) -> bool:
+        descriptor = lock_entry(cache, entry, shared=False)
+        if descriptor is None:
+            return False
+        try:
+            shutil.rmtree(entry, ignore_errors=True)
+        finally:
+            os.close(descriptor)
+        removed.append(entry)
+        return True
+
+    remaining = []
+    for used, entry in candidates:
+        if max_idle and now - used > max_idle * 3600 and remove(entry):
+            continue
+        remaining.append(entry)
+    if max_bytes:
+        total = disk_usage(cache / "repositories")
+        for entry in remaining:
+            if total <= max_bytes:
+                break
+            size = disk_usage(entry)
+            if remove(entry):
+                total -= size
+    for entry in removed:
+        print(f"cargo-fast: removed unused cache entry {entry}", file=sys.stderr)
+    return removed
+
+
 def cargo_subcommand(arguments: list[str]) -> str | None:
     """Find the Cargo command after its global flags."""
     index = 0
@@ -428,6 +634,20 @@ def main() -> int:
         if options.print_env:
             print(json.dumps(environment, indent=2))
             return 0
+        # Hold this build's entries so other wrappers never evict them.
+        cache = Path(environment["SCCACHE_DIR"]).parent
+        repositories = cache / "repositories"
+        entries = [
+            repositories.joinpath(*path.relative_to(repositories).parts[:2])
+            for path in (
+                Path(environment["CARGO_TARGET_DIR"]),
+                Path(environment["CARGO_BUILD_BUILD_DIR"]),
+            )
+        ]
+        for entry in entries:
+            # The lock lasts until this process exits.
+            lock_entry(cache, entry, shared=True)
+        evict(cache, entries)
         for name in (
             "CARGO_TARGET_DIR",
             "CARGO_BUILD_BUILD_DIR",
@@ -435,6 +655,8 @@ def main() -> int:
             "CCACHE_DIR",
         ):
             Path(environment[name]).mkdir(parents=True, exist_ok=True)
+        for entry in entries:
+            (entry / STAMP).touch()
         if options.shell_env:
             for name, value in environment.items():
                 print(f"export {name}={shlex.quote(value)}")

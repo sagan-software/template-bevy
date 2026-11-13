@@ -125,8 +125,17 @@ native flags and compiler commands contribute to the repository cache identity.
 On Unix, the wrapper selects a cache-specific sccache socket. Its encoded path must
 fit within 100 bytes; choose a shorter cache root when the wrapper rejects it.
 The default compiler-cache limits are 20 GiB for sccache and 5 GiB for ccache.
-`SCCACHE_CACHE_SIZE` and `CCACHE_MAXSIZE` override those limits. These limits do not
-bound Cargo artifact storage.
+`SCCACHE_CACHE_SIZE` and `CCACHE_MAXSIZE` override those limits.
+
+Cargo artifact storage has its own limits. Before each build the wrapper removes
+cache entries under `repositories/`: each worktree or lane folder, and each
+repository's shared `dependencies` folder. It keeps an entry while a wrapper
+holds its lock in `locks/` or a live process names it in `CARGO_TARGET_DIR` or
+`CARGO_BUILD_BUILD_DIR`. It first removes entries unused for more than
+`BEVY_BUILD_MAX_IDLE_HOURS` (default 6), then the least recently used until
+`repositories/` holds at most `BEVY_BUILD_MAX_GIB` (default 200). It checks at
+most every `BEVY_BUILD_EVICT_INTERVAL_SECONDS` (default 600). A value of 0
+turns that limit off. `--print-env` evicts nothing.
 
 ## Concurrent workers
 
