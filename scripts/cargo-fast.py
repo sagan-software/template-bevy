@@ -5,7 +5,7 @@ Before a build the wrapper evicts cache entries under repositories/ that no
 live process uses. Each entry is one worktree or lane folder, or a
 repository's shared dependencies folder. An entry is in use while a wrapper
 holds its lock or a process names it in CARGO_TARGET_DIR or
-CARGO_BUILD_BUILD_DIR. Defaults:
+CARGO_BUILD_BUILD_DIR. Defaults, as Bill decided on 2026-11-13:
 
 - BEVY_BUILD_MAX_IDLE_HOURS=6: remove entries unused for longer.
 - BEVY_BUILD_MAX_GIB=200: then remove least recently used entries until

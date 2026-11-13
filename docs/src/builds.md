@@ -134,8 +134,8 @@ holds its lock in `locks/` or a live process names it in `CARGO_TARGET_DIR` or
 `CARGO_BUILD_BUILD_DIR`. It first removes entries unused for more than
 `BEVY_BUILD_MAX_IDLE_HOURS` (default 6), then the least recently used until
 `repositories/` holds at most `BEVY_BUILD_MAX_GIB` (default 200). It checks at
-most every `BEVY_BUILD_EVICT_INTERVAL_SECONDS` (default 600). A value of 0
-turns that limit off. `--print-env` evicts nothing.
+most every `BEVY_BUILD_EVICT_INTERVAL_SECONDS` (default 600). Bill decided the
+idle and size defaults on 2026-11-13. A value of 0 turns that limit off. `--print-env` evicts nothing.
 
 ## Concurrent workers
 
