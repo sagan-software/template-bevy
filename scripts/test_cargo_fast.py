@@ -1355,6 +1355,27 @@ class CargoFastCliTests(unittest.TestCase):
         self.assertEqual(invocation["argv"], ["build", "--locked"])
         self.assertEqual(invocation["env"], expected_environment)
 
+    def test_build_evicts_idle_entries_and_stamps_its_own(self) -> None:
+        environment = self._environment(
+            extra={"CARGO_FAST_CAPTURE": str(self.root / "evict.json")}
+        )
+        selected = self._print_environment(
+            self.repository, environment=environment
+        )
+        stale = self.cache_root.resolve() / "repositories" / "old" / "lane"
+        (stale / "target").mkdir(parents=True)
+        long_ago = time.time() - 7 * 3600
+        for path in (stale / "target", stale):
+            os.utime(path, (long_ago, long_ago))
+
+        result = self._invoke(self.repository, environment=environment)
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse(stale.exists())
+        self.assertIn("removed unused cache entry", result.stderr)
+        own = Path(selected["CARGO_TARGET_DIR"]).parent
+        self.assertTrue((own / ".cargo-fast-used").is_file())
+
     def test_command_from_nested_directory_runs_cargo_at_repository_root(
         self,
     ) -> None:
